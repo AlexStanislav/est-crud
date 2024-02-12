@@ -8,5 +8,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     updateBike: (bike, tableName) => ipcRenderer.invoke('update-bike', {bike, tableName}),
     generateXLS: () => ipcRenderer.invoke('generate-xls'),
     uploadTable: () => ipcRenderer.invoke('upload-table'),
-    saveNewTable: (data) => ipcRenderer.invoke('save-new-table', data)
+    saveNewTable: (data) => ipcRenderer.invoke('save-new-table', data),
+    editTable: (data) => ipcRenderer.invoke('edit-table', data)
 })

@@ -28,7 +28,14 @@
           :key="brand"
           @click="showCurrentBikes(brand)"
         >
-          {{ brand }}
+          <div>
+            {{ brand }}
+          </div>
+          <Button
+            icon="pi pi-pencil"
+            severity="warning"
+            @click="editTable(brand)"
+          />
         </li>
       </ul>
     </nav>
@@ -258,7 +265,12 @@
         />
       </div>
       <div class="form-row">
-        <InputText type="text" placeholder="Nume fisier incarcat..." v-model="currentTableFilename" readonly/>
+        <InputText
+          type="text"
+          placeholder="Nume fisier incarcat..."
+          v-model="currentTableFilename"
+          readonly
+        />
       </div>
       <div class="form-row">
         <Button
@@ -272,6 +284,33 @@
       <template #footer>
         <Button label="Salveaza" severity="success" @click="saveNewTable()" />
       </template>
+    </Dialog>
+    <Dialog
+      v-model:visible="showTableEditDialog"
+      modal
+      class="table-edit-dialog"
+    >
+      <template #header>
+        <h2>Editeaza Coloana tabel</h2>
+      </template>
+      <div class="form-row">
+        <FloatLabel>
+          <InputText type="text" v-model="currentTable.brand" />
+          <label>Marca {{ currentTable.name }}</label>
+        </FloatLabel>
+        <FloatLabel>
+          <InputText type="text" v-model="currentTable.vehicle_type" />
+          <label>Tip vehicul {{ currentTable.name }}</label>
+        </FloatLabel>
+      </div>
+      <div class="form-row">
+        <Button
+          severity="success"
+          icon="pi pi-save"
+          label="Salveaza"
+          @click="saveTableChanges()"
+        />
+      </div>
     </Dialog>
     <ConfirmPopup></ConfirmPopup>
     <Toast></Toast>
@@ -305,6 +344,7 @@ const currentBikes = ref([]);
 const currentBike = ref({});
 const showDialog = ref(false);
 const showNewTableDialog = ref(false);
+const showTableEditDialog = ref(false);
 const currentBrand = ref("");
 const newGalleryImage = ref("");
 const currentTableFilename = ref("");
@@ -317,6 +357,13 @@ const newTable = ref({
   name: "",
   type: "",
 });
+
+const currentTable = ref({
+  name: "",
+  brand: "",
+  vehicle_type: "",
+});
+
 const tableTypes = ref([
   { name: "Motociclete", value: "bikes" },
   { name: "Scutere", value: "scooters" },
@@ -329,11 +376,11 @@ const saveNewTable = async () => {
   const { name, type } = newTable.value;
   const response = await appStore.saveNewTable({ name, type: type.value });
   console.log(response);
-}
+};
 
 const uploadXLS = async () => {
   const result = await appStore.uploadTable();
-  if(result.success) {
+  if (result.success) {
     currentTableFilename.value = result.fileName;
     toast.add({
       severity: "success",
@@ -341,13 +388,13 @@ const uploadXLS = async () => {
       detail: `Tabel incarcat`,
       life: 3000,
     });
-  }else{
+  } else {
     toast.add({
       severity: "error",
       summary: "Error",
       detail: `Tabelul nu a putut fi incarcat`,
       life: 3000,
-    })
+    });
   }
 };
 
@@ -359,6 +406,29 @@ const saveChanges = async () => {
     detail: `Modificari salvate`,
     life: 3000,
   });
+};
+
+const editTable = (brand) => {
+  showTableEditDialog.value = true;
+  currentTable.value.name = brand;
+};
+
+const saveTableChanges = async () => {
+  const { name, brand, vehicle_type } = currentTable.value;
+  const response = await appStore.editTable({
+    tableName: name,
+    info: { brand, vehicle_type },
+  });
+  if (response) {
+    currentTable.value.brand = ""
+    currentTable.vehicle_type = ""
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: `Modificari salvate`,
+      life: 3000,
+    });
+  }
 };
 
 const editBike = (bike) => {
@@ -435,6 +505,9 @@ watch(currentBike, () => {
 .table-actions {
   display: flex;
   gap: 1rem;
+  .p-button {
+    width: 3rem;
+  }
 }
 
 /* Using original class names */
@@ -457,6 +530,17 @@ nav {
     padding: 0;
 
     li {
+      div {
+        display: flex;
+        align-items: center;
+        flex: 1;
+      }
+      .p-button {
+        flex: 0.2;
+      }
+
+      display: flex;
+      flex-flow: row nowrap;
       margin: 0.25rem 0;
       background: var(--primary-color);
       color: var(--primary-color-text);
@@ -651,6 +735,17 @@ main {
   }
   .p-dropdown {
     width: 100%;
+  }
+}
+
+.table-edit-dialog {
+  width: fit-content;
+  height: 15rem;
+  .form-row {
+    display: flex;
+    gap: 1rem;
+    margin-top: 2rem;
+    height: fit-content;
   }
 }
 

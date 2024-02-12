@@ -61,6 +61,10 @@ export const useAppStore = defineStore('app', {
         async saveNewTable(data) {
             const response = await window.electronAPI.saveNewTable(data)
             return response
+        },
+        async editTable(data){
+            const response = await window.electronAPI.editTable(data)
+            return response
         }
 
     }

@@ -13,8 +13,9 @@ if (require('electron-squirrel-startup')) {
 const createWindow = () => {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 1366,
+    height: 768,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
     },
@@ -99,7 +100,6 @@ function createDynamicPool(user, password, host) {
 
 
 ipcMain.handle('connect-to-database', async (event, data) => {
-  console.log(event)
   try {
     dynamicPool = createDynamicPool(data.username, data.password, data.host)
     console.log('Connected to PostgreSQL')
@@ -333,6 +333,32 @@ ipcMain.handle('save-new-table', async (event, data) => {
   } catch (error) {
     console.log(error)
   } finally {
+    connection.release()
+  }
+})
+
+ipcMain.handle('edit-table', async (event, data) => {
+  const connection = await dynamicPool.connect()
+  const keys = Object.keys(data.info)
+  let query = {
+    text: '',
+    values: []
+  }  
+  for (const key of keys){
+    if(data.info[key] !== ""){
+      query.text = `UPDATE public.${data.tableName} SET ${key} = $1`
+      query.values.push(data.info[key])
+    }
+  }
+
+  try{
+    connection.query(query)
+    console.log('Table updated')
+    return true
+  } catch(error) {
+    console.log(error)
+    return false
+  } finally{
     connection.release()
   }
 })
