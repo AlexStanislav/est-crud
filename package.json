@@ -2,19 +2,19 @@
   "name": "est-crud",
   "productName": "est-crud",
   "version": "1.0.0",
-  "description": "My Electron application description",
+  "description": "Admin baza de date",
   "main": ".vite/build/main.js",
   "scripts": {
     "start": "electron-forge start",
     "package": "electron-forge package",
     "make": "electron-forge make",
     "publish": "electron-forge publish",
-    "dist": "electron-builder --win portable",
+    "dist": "electron-builder --win",
     "lint": "echo \"No linting configured\""
   },
   "keywords": [],
   "author": {
-    "name": "AandLSistemSecurity",
+    "name": "Alex Stanislav",
     "email": "stanislav.alexandru@gmail.com"
   },
   "license": "MIT",

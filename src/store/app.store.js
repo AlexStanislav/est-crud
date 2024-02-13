@@ -3,12 +3,17 @@ import { defineStore } from 'pinia'
 export const useAppStore = defineStore('app', {
     state: () => ({
         isConnected: false,
-        allBikes: {}
+        allBikes: {},
+        allRequests: []
     }),
     actions: {
-        connect(data) {
+        async connect(data) {
             const isConnected = window.electronAPI.connectToDatabase(data)
-            this.isConnected = isConnected.data
+            this.isConnected = await isConnected
+        },
+        async getServiceInfo(){
+            const result = await window.electronAPI.getServiceInfo()
+            this.allRequests = await result
         },
         async getAllBikes() {
             const allBikes = await window.electronAPI.getInfo()
@@ -65,7 +70,16 @@ export const useAppStore = defineStore('app', {
         async editTable(data){
             const response = await window.electronAPI.editTable(data)
             return response
-        }
+        },
+        async markRequestAsActive(id){
+            await window.electronAPI.markRequestAsActive(id)
+        },
+        async markRequestAsInactive(id){
+            await window.electronAPI.markRequestAsInactive(id)
+        },
+        async deleteRequest(id){
+            await window.electronAPI.deleteRequest(id)
+        },
 
     }
 })

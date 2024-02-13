@@ -9,5 +9,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     generateXLS: () => ipcRenderer.invoke('generate-xls'),
     uploadTable: () => ipcRenderer.invoke('upload-table'),
     saveNewTable: (data) => ipcRenderer.invoke('save-new-table', data),
-    editTable: (data) => ipcRenderer.invoke('edit-table', data)
+    editTable: (data) => ipcRenderer.invoke('edit-table', data),
+    getServiceInfo: () => ipcRenderer.invoke('get-service-requests'),
+    deleteRequest: (id) => ipcRenderer.invoke('delete-request', id),
+    markRequestAsActive: (id) => ipcRenderer.invoke('mark-request-as-active', id),
+    markRequestAsInactive: (id) => ipcRenderer.invoke('mark-request-as-inactive', id)
 })

@@ -117,9 +117,11 @@ ipcMain.handle('get-info', async () => {
 
   const bikes = {}
   for (const table of tables.rows) {
-    const query = `SELECT * FROM ${table.tablename}`
-    const result = await connection.query(query)
-    bikes[table.tablename] = result.rows
+    if(table.tablename !== 'service_requests'){
+      const query = `SELECT * FROM ${table.tablename}`
+      const result = await connection.query(query)
+      bikes[table.tablename] = result.rows
+    }
   }
 
   for (const bikeTypeIndex in bikes) {
@@ -190,6 +192,20 @@ ipcMain.handle('get-info', async () => {
   }
 
   return bikes
+})
+
+ipcMain.handle('get-service-requests', async () => {
+  const connection = await dynamicPool.connect()
+  const query = `SELECT * FROM service_requests`
+  try {
+    const serviceRequests = await connection.query(query)
+    return serviceRequests.rows
+  } catch (error) {
+    console.log(error)
+  }finally{
+    connection.release()
+  }
+
 })
 
 ipcMain.handle('update-bike', async (event, data) => {
@@ -354,6 +370,51 @@ ipcMain.handle('edit-table', async (event, data) => {
   try{
     connection.query(query)
     console.log('Table updated')
+    return true
+  } catch(error) {
+    console.log(error)
+    return false
+  } finally{
+    connection.release()
+  }
+})
+
+ipcMain.handle('mark-request-as-active', async (event, id) => {
+  const connection = await dynamicPool.connect()
+  const query = `UPDATE public.service_requests SET is_active = true WHERE id = '${id}'`
+  try{
+    connection.query(query)
+    console.log('Request marked as active')
+    return true
+  } catch(error) {
+    console.log(error)
+    return false
+  } finally{
+    connection.release()
+  }
+})
+
+ipcMain.handle('mark-request-as-inactive', async (event, id) => {
+  const connection = await dynamicPool.connect()
+  const query = `UPDATE public.service_requests SET is_active = false WHERE id = '${id}'`
+  try{
+    connection.query(query)
+    console.log('Request marked as inactive')
+    return true
+  } catch(error) {
+    console.log(error)
+    return false
+  } finally{
+    connection.release()
+  }
+})
+
+ipcMain.handle('delete-request', async (event, id) => {
+  const connection = await dynamicPool.connect()
+  const query = `DELETE FROM public.service_requests WHERE id = '${id}'`
+  try{
+    connection.query(query)
+    console.log('Request deleted')
     return true
   } catch(error) {
     console.log(error)

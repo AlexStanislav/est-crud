@@ -558,7 +558,6 @@ nav {
 /* Using original class names */
 main {
   flex: 6;
-  padding-top: 2rem;
 }
 
 /* Using original class names */
@@ -693,10 +692,13 @@ main {
 }
 
 .actions-container {
-  width: 8rem;
+  width: fit-content;
   display: flex;
   flex-flow: row nowrap;
   gap: 0.5rem;
+  .p-button{
+    width: 2.5rem;
+  }
 }
 
 /* Using original class names */

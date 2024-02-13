@@ -25,8 +25,8 @@ const connectionString = ref("");
 const username = ref("");
 const password = ref("");
 
-const connectToDB = () => {
-  appStore.connect({ username: username.value, password: password.value, connectionString: connectionString.value });
+const connectToDB = async () => {
+  await appStore.connect({ username: username.value, password: password.value, connectionString: connectionString.value });
   router.push({ path: "/home" });
 };
 </script>
@@ -37,6 +37,7 @@ const connectToDB = () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  position: relative;
 }
 .p-card {
   width: 400px;
