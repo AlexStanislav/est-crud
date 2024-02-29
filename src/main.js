@@ -4,6 +4,7 @@ const xlsx = require('node-xlsx');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { URL } = require('url');
+import installExtension, { VUEJS_DEVTOOLS } from 'electron-devtools-installer';
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (require('electron-squirrel-startup')) {
@@ -39,15 +40,15 @@ const createWindow = () => {
   })
 
   session.fromPartition("persist:name")
-  .setPermissionRequestHandler((webContents, permission, callback) => {
-    const parsedUrl = new URL(webContents.getURL());
+    .setPermissionRequestHandler((webContents, permission, callback) => {
+      const parsedUrl = new URL(webContents.getURL());
 
-    if (permission === 'notifications' && parsedUrl.host !== 'localhost') {
-      callback(false);
-    } else {
-      callback(true);
-    }
-  })
+      if (permission === 'notifications' && parsedUrl.host !== 'localhost') {
+        callback(false);
+      } else {
+        callback(true);
+      }
+    })
 
   // Open the DevTools.
   // mainWindow.webContents.openDevTools();
@@ -67,8 +68,12 @@ app.on('web-contents-created', (event, contents) => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on('ready', createWindow);
-
+app.whenReady().then(() => {
+  createWindow();
+  installExtension(VUEJS_DEVTOOLS)
+    .then((name) => console.log(`Added Extension:  ${name}`))
+    .catch((err) => console.log('An error occurred: ', err));
+})
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -89,19 +94,23 @@ app.on('activate', () => {
 
 const { Pool } = require('pg');
 let dynamicPool;
-function createDynamicPool(user, password, host) {
+function createDynamicPool(user, password, host, database) {
   return new Pool({
     user: user,
     password: password,
     host: host,
-    database: "estbike",
+    database: database,
+    port: 5432,
+    // ssl: {
+    //   rejectUnauthorized: false
+    // }
   });
 }
 
 
 ipcMain.handle('connect-to-database', async (event, data) => {
   try {
-    dynamicPool = createDynamicPool(data.username, data.password, data.host)
+    dynamicPool = createDynamicPool(data.username, data.password, data.host, data.database)
     console.log('Connected to PostgreSQL')
     return true
   } catch (error) {
@@ -117,7 +126,7 @@ ipcMain.handle('get-info', async () => {
 
   const bikes = {}
   for (const table of tables.rows) {
-    if(table.tablename !== 'service_requests'){
+    if (table.tablename.includes('_bikes') || table.tablename.includes('_scooters') || table.tablename.includes('_atv')) {
       const query = `SELECT * FROM ${table.tablename}`
       const result = await connection.query(query)
       bikes[table.tablename] = result.rows
@@ -130,8 +139,7 @@ ipcMain.handle('get-info', async () => {
       const bike = bikeTypes[bikeIndex]
 
       if (bike.permis !== 'undefined' && bike.permis !== 'null' && bike.permis !== null && bike.permis !== undefined) {
-        const permisArray = bike.permis.split(" ").filter(item => item !== "")
-        bike.permis = permisArray
+        bike.permis = bike.permis.replace(/[{}]+/g, "").replace(/\"+/g, "").split(",")
       } else {
         bike.permis = []
       }
@@ -202,7 +210,7 @@ ipcMain.handle('get-service-requests', async () => {
     return serviceRequests.rows
   } catch (error) {
     console.log(error)
-  }finally{
+  } finally {
     connection.release()
   }
 
@@ -231,6 +239,8 @@ ipcMain.handle('update-bike', async (event, data) => {
     is_popular,
     capacitate
   } = data.bike;
+
+  const permisValue = permis.length === 0 ? null : permis
 
   const updateQuery = {
     text: `
@@ -267,7 +277,7 @@ ipcMain.handle('update-bike', async (event, data) => {
       brand,
       category,
       main_year,
-      permis,
+      permisValue,
       rabla,
       gallery_image,
       gallery_description,
@@ -278,6 +288,7 @@ ipcMain.handle('update-bike', async (event, data) => {
       id
     ]
   };
+
 
   await connection.query(updateQuery);
   console.log("Updated bike");
@@ -293,13 +304,18 @@ ipcMain.handle('upload-table', async (event) => {
     ]
   })
   try {
-    currentXLSFile = xlsx.parse(fs.readFileSync(filePaths[0]))
-    return { success: true, fileName: filePaths[0] }
+    if (filePaths[0] === undefined) {
+      return { success: false }
+    } else {
+      currentXLSFile = xlsx.parse(fs.readFileSync(filePaths[0]))
+      return {
+        success: true, fileName: filePaths[0]
+      }
+    }
   } catch (error) {
     console.log(error)
     return { success: false }
   }
-
 })
 
 ipcMain.handle('save-new-table', async (event, data) => {
@@ -359,22 +375,22 @@ ipcMain.handle('edit-table', async (event, data) => {
   let query = {
     text: '',
     values: []
-  }  
-  for (const key of keys){
-    if(data.info[key] !== ""){
+  }
+  for (const key of keys) {
+    if (data.info[key] !== "") {
       query.text = `UPDATE public.${data.tableName} SET ${key} = $1`
       query.values.push(data.info[key])
     }
   }
 
-  try{
+  try {
     connection.query(query)
     console.log('Table updated')
     return true
-  } catch(error) {
+  } catch (error) {
     console.log(error)
     return false
-  } finally{
+  } finally {
     connection.release()
   }
 })
@@ -382,14 +398,14 @@ ipcMain.handle('edit-table', async (event, data) => {
 ipcMain.handle('mark-request-as-active', async (event, id) => {
   const connection = await dynamicPool.connect()
   const query = `UPDATE public.service_requests SET is_active = true WHERE id = '${id}'`
-  try{
+  try {
     connection.query(query)
     console.log('Request marked as active')
     return true
-  } catch(error) {
+  } catch (error) {
     console.log(error)
     return false
-  } finally{
+  } finally {
     connection.release()
   }
 })
@@ -397,14 +413,14 @@ ipcMain.handle('mark-request-as-active', async (event, id) => {
 ipcMain.handle('mark-request-as-inactive', async (event, id) => {
   const connection = await dynamicPool.connect()
   const query = `UPDATE public.service_requests SET is_active = false WHERE id = '${id}'`
-  try{
+  try {
     connection.query(query)
     console.log('Request marked as inactive')
     return true
-  } catch(error) {
+  } catch (error) {
     console.log(error)
     return false
-  } finally{
+  } finally {
     connection.release()
   }
 })
@@ -412,14 +428,14 @@ ipcMain.handle('mark-request-as-inactive', async (event, id) => {
 ipcMain.handle('delete-request', async (event, id) => {
   const connection = await dynamicPool.connect()
   const query = `DELETE FROM public.service_requests WHERE id = '${id}'`
-  try{
+  try {
     connection.query(query)
     console.log('Request deleted')
     return true
-  } catch(error) {
+  } catch (error) {
     console.log(error)
     return false
-  } finally{
+  } finally {
     connection.release()
   }
 })

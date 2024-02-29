@@ -22,20 +22,6 @@ export const useAppStore = defineStore('app', {
         updateBike(bike, tableName) {
             const { id, bike_name, bike_description, bike_slogan, price, old_price, image, gallery, brand, category, main_year, permis, rabla, gallery_image, gallery_description, gallery_title, is_gallery, is_popular, capacitate } = bike
             const imagesArray = gallery.map(image => image);
-            let permisArray;
-            if (typeof permis === "string") {
-                if (permis !== "") {
-                    permisArray = permis.split(',')
-                } else {
-                    permisArray = null
-                }
-            } else {
-                if (permis !== "") {
-                    permisArray = permis.map(permis => permis)
-                } else {
-                    permisArray = null
-                }
-            }
             const updateBike = {
                 id,
                 bike_name,
@@ -48,7 +34,7 @@ export const useAppStore = defineStore('app', {
                 brand,
                 category,
                 main_year,
-                permis: permisArray,
+                permis,
                 rabla,
                 gallery_image,
                 gallery_description,
@@ -57,6 +43,8 @@ export const useAppStore = defineStore('app', {
                 is_popular,
                 capacitate
             }
+            console.log(updateBike)
+            updateBike.permis = [...new Set(permis)]
             window.electronAPI.updateBike(updateBike, tableName)
         },
         async uploadTable() {

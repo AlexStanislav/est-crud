@@ -4,6 +4,7 @@
       <h1>Login</h1>
       <template #content>
         <InputText type="text" placeholder="Connection String" v-model="connectionString" />
+        <InputText type="text" placeholder="Database Name" v-model="databaseName" />
         <InputText type="text" placeholder="Username" v-model="username" />
         <InputText type="password" placeholder="Password" v-model="password" />
         <Button @click="connectToDB()">Connect</Button>
@@ -24,9 +25,10 @@ const appStore = useAppStore();
 const connectionString = ref("");
 const username = ref("");
 const password = ref("");
+const databaseName = ref("");
 
 const connectToDB = async () => {
-  await appStore.connect({ username: username.value, password: password.value, connectionString: connectionString.value });
+  await appStore.connect({ username: username.value, password: password.value, host: connectionString.value, database: databaseName.value });
   router.push({ path: "/home" });
 };
 </script>

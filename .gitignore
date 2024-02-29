@@ -91,3 +91,6 @@ typings/
 
 # Electron-Forge
 out/
+
+#Electron-builder output
+/dist_electron

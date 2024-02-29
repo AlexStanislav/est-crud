@@ -10,10 +10,6 @@
             @click="showNewTableDialog = true"
             title="Incarca tabel nou"
           ></Button>
-          <!-- <Button icon="pi pi-upload"
-            severity="warning"
-            title="Importa informatii tabele"
-          ></Button> -->
           <Button
             icon="pi pi-refresh"
             severity="info"
@@ -31,53 +27,145 @@
           <div>
             {{ brand }}
           </div>
-          <Button
+          <!-- <Button
             icon="pi pi-pencil"
             severity="warning"
             @click="editTable(brand)"
-          />
+          /> -->
         </li>
       </ul>
     </nav>
     <main>
+      <div class="loading-data" v-if="isLoading">
+        <h1>Se incarca...</h1>
+        <ProgressSpinner />
+      </div>
       <DataTable
-        v-model:filters="filters"
+        v-else
+        v-model:filters="globalFilters"
         removableSort
         :value="currentBikes"
         size="small"
+        filterDisplay="menu"
+        :globalFilterFields="[
+          'bike_name',
+          'price',
+          'old_price',
+          'capacitate',
+          'category',
+          'is_gallery',
+          'main_year',
+        ]"
       >
-        <Column sortable field="bike_name" header="Nume"> </Column>
-        <Column sortable field="price" header="Pret">
+        <template #header>
+          <InputText
+            v-model="globalFilters['global'].value"
+            placeholder="Cauta"
+          />
+        </template>
+        <Column sortable field="bike_name" header="Nume">
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
+          </template>
+        </Column>
+        <Column sortable field="price" header="Pret in euro">
           <template #body="slotProps">
             {{ slotProps.data.price ? slotProps.data.price : "Gol" }}
           </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
+          </template>
         </Column>
-        <Column sortable header="Pret vechi">
+        <Column sortable field="old_price" header="Pret vechi">
           <template #body="slotProps">
             {{ slotProps.data.old_price ? slotProps.data.old_price : "Gol" }}
           </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
+          </template>
         </Column>
-        <Column sortable field="capacitate" header="Capacitate"></Column>
+        <Column sortable field="is_gallery" header="In slideshow">
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            /> </template
+        ></Column>
+        <Column sortable field="capacitate" header="Capacitate">
+          <template #body="slotProps">
+            {{ slotProps.data.capacitate ? slotProps.data.capacitate : "Gol" }}
+          </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
+          </template>
+        </Column>
         <Column sortable field="category" header="Categorie">
           <template #body="slotProps">
             {{ slotProps.data.category ? slotProps.data.category : "Gol" }}
+          </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
           </template>
         </Column>
         <Column sortable field="main_year" header="An">
           <template #body="slotProps">
             {{ slotProps.data.main_year ? slotProps.data.main_year : "Gol" }}
           </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
+          </template>
         </Column>
-        <Column sortable header="Rabla">
+        <Column sortable field="rabla" header="Rabla">
           <template #body="slotProps">
             {{ slotProps.data.rabla ? slotProps.data.rabla : "Gol" }}
           </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
+          </template>
         </Column>
-        <Column sortable header="Permis">
+        <Column sortable field="permis" header="Permis">
           <template #body="slotProps">
             {{
-              slotProps.data.permis.length > 0 ? slotProps.data.permis : "Gol"
+              slotProps.data.permis.length > 0
+                ? slotProps.data.permis.join(", ")
+                : "Gol"
             }}
+          </template>
+          <template #filter="{ filterModel }">
+            <InputText
+              type="text"
+              v-model="filterModel.value"
+              class="p-column-filter"
+            />
           </template>
         </Column>
         <Column header="Actiuni">
@@ -88,7 +176,6 @@
                 severity="warning"
                 @click="editBike(slotProps.data)"
               />
-              <!-- <Button icon="pi pi-trash" severity="danger" @click="confirmDelete($event, slotProps.data)" /> -->
             </div>
           </template>
         </Column>
@@ -108,43 +195,81 @@
             <label>Nume</label>
           </FloatLabel>
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.brand" />
+            <Dropdown
+              v-model="currentBike.brand"
+              :options="brandOptions[currentBike['vehicle_type']]"
+              placeholder="Marca"
+              class="bike-column"
+            />
             <label>Marca</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.price" />
+            <InputText type="number" v-model="currentBike.price" />
             <label>Pret</label>
           </FloatLabel>
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.old_price" />
+            <InputText type="number" v-model="currentBike.old_price" />
             <label>Pret vechi</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.category" />
+            <Dropdown
+              v-model="currentBike.category"
+              :options="bikeCategories[currentBike['vehicle_type']]"
+              class="bike-column"
+              placeholder="Categorie"
+            />
             <label>Categorie</label>
           </FloatLabel>
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.main_year" />
+            <Dropdown
+              v-model="currentBike.main_year"
+              :options="yearOptions"
+              class="bike-column"
+              placeholder="An"
+              optionLabel="name"
+              optionValue="value"
+            />
             <label>An</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.rabla" />
+            <Dropdown
+              v-model="currentBike.rabla"
+              :options="rablaOptions"
+              class="bike-column"
+              placeholder="Eligibila Rabla"
+              optionLabel="name"
+              optionValue="value"
+            />
             <label>Rabla</label>
           </FloatLabel>
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.permis" />
+            <MultiSelect
+              v-model="permisValue"
+              :options="permisOptions"
+              optionLabel="name"
+              optionValue="value"
+              placeholder="Permis"
+              display="chip"
+              class="bike-column"
+              @change="permisChange"
+            ></MultiSelect>
             <label>Permis</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <InputText type="text" v-model="currentBike.capacitate" />
+            <Dropdown
+              v-model="currentBike.capacitate"
+              :options="capacityOptions()"
+              class="bike-column"
+              placeholder="Capacitate"
+            />
             <label>Capacitate</label>
           </FloatLabel>
           <FloatLabel>
@@ -163,6 +288,23 @@
           </FloatLabel>
         </div>
         <div class="form-row">
+          <FloatLabel>
+            <Dropdown
+              v-model="currentBike.vehicle_type"
+              :options="[
+                { name: 'Motociclete', value: 'bikes' },
+                { name: 'Scutere', value: 'scooters' },
+                { name: 'Atv', value: 'atv' },
+              ]"
+              placeholder="Tip vehicul"
+              optionLabel="name"
+              optionValue="value"
+              class="bike-column"
+            />
+            <label>Tip vehicul</label>
+          </FloatLabel>
+        </div>
+        <div class="form-row">
           <div class="form-column">
             <label>Exista in slideshow?</label>
             <ToggleButton
@@ -171,14 +313,14 @@
               offLabel="Nu"
             />
           </div>
-          <div class="form-column">
+          <!-- <div class="form-column">
             <label>Exista in modele populare?</label>
             <ToggleButton
               v-model="currentBike.is_popular"
               onLabel="Da"
               offLabel="Nu"
             />
-          </div>
+          </div> -->
         </div>
         <div class="form-row main-image">
           <h2>Imagine principala</h2>
@@ -264,6 +406,52 @@
           placeholder="Tip Tabel"
         />
       </div>
+      <div class="form-row table-example">
+        <h2>Model Tabel</h2>
+        <table>
+          <tr>
+            <td>A</td>
+            <td>B</td>
+            <td>C</td>
+            <td>D</td>
+            <td>E</td>
+            <td>F</td>
+            <td>G</td>
+            <td>H</td>
+            <td>I</td>
+          </tr>
+          <tr>
+            <td
+              v-for="(column, index) of tableExample.slice(0, 9)"
+              :key="index"
+            >
+              {{ column }}
+            </td>
+          </tr>
+        </table>
+        <table>
+          <tr>
+            <td>J</td>
+            <td>K</td>
+            <td>L</td>
+            <td>M</td>
+            <td>N</td>
+            <td>O</td>
+            <td>P</td>
+            <td>Q</td>
+            <td>R</td>
+            <td>S</td>
+          </tr>
+          <tr>
+            <td
+              v-for="(column, index) of tableExample.slice(9, 19)"
+              :key="index"
+            >
+              {{ column }}
+            </td>
+          </tr>
+        </table>
+      </div>
       <div class="form-row">
         <InputText
           type="text"
@@ -294,10 +482,7 @@
         <h2>Editeaza Coloana tabel</h2>
       </template>
       <div class="form-row">
-        <FloatLabel>
-          <InputText type="text" v-model="currentTable.brand" />
-          <label>Marca {{ currentTable.name }}</label>
-        </FloatLabel>
+        <!-- <Dropdown v-model="currentTable.brand" :options="brandOptions[currentTable['name'].split('_')[1]]" class="bike-column" placeholder="Marca"/> -->
         <FloatLabel>
           <InputText type="text" v-model="currentTable.vehicle_type" />
           <label>Tip vehicul {{ currentTable.name }}</label>
@@ -317,6 +502,7 @@
   </div>
 </template>
 <script setup>
+import ProgressSpinner from "primevue/progressspinner";
 import { onMounted, ref, watch } from "vue";
 import { useAppStore } from "../store/app.store";
 import { useConfirm } from "primevue/useconfirm";
@@ -335,12 +521,14 @@ import ToggleButton from "primevue/togglebutton";
 import Toast from "primevue/toast";
 import Image from "primevue/image";
 import Dropdown from "primevue/dropdown";
+import MultiSelect from "primevue/multiselect";
+import { FilterMatchMode } from "primevue/api";
 
 const toast = useToast();
 const confirm = useConfirm();
 const appStore = useAppStore();
 const bikeBrands = ref([]);
-const currentBikes = ref([]);
+const currentBikes = ref();
 const currentBike = ref({});
 const showDialog = ref(false);
 const showNewTableDialog = ref(false);
@@ -348,9 +536,98 @@ const showTableEditDialog = ref(false);
 const currentBrand = ref("");
 const newGalleryImage = ref("");
 const currentTableFilename = ref("");
-const filters = ref({
-  global: { value: null, matchMode: "contains" },
-  bike_name: { value: null, matchMode: "contains" },
+const isLoading = ref(true);
+const permisValue = ref();
+const permisOptions = ref([
+  { name: "A", value: "A" },
+  { name: "A1", value: "A1" },
+  { name: "A2", value: "A2" },
+  { name: "B", value: "B" },
+]);
+
+const bikeCategories = ref({
+  bikes: ["Sport", "Naked", "Touring", "Adventure", "Dual Sport", "Cruiser"],
+  scooters: ["Sport", "Utility", "Copii"],
+  atv: ["Sport", "Utility", "Copii", "Touring", "Side-by-side"],
+});
+
+const rablaOptions = ref([
+  { name: "Da", value: true },
+  { name: "Nu", value: false },
+]);
+
+const brandOptions = ref({
+  bikes: [],
+  scooters: [],
+  atv: [],
+});
+
+const yearOptions = ref([
+  { name: "2024", value: 2024 },
+  { name: "2023", value: 2023 },
+  { name: "2022", value: 2022 },
+  { name: "2021", value: 2021 },
+  { name: "2020", value: 2020 },
+]);
+
+const tableExample = ref([
+  "bike_name",
+  "bike_slogan",
+  "bike_description",
+  "main_year",
+  "price",
+  "old_price",
+  "currency",
+  "image",
+  "gallery",
+  "category",
+  "rabla",
+  "permis",
+  "capacitate",
+  "is_gallery",
+  "gallery_image",
+  "gallery_title",
+  "gallery_description",
+  "is_popular",
+  "brand",
+  "vehicle_type",
+]);
+
+const capacityOptions = () => {
+  const numArray = [];
+  let i = 50;
+  while (i <= 5000) {
+    numArray.push(i);
+    i += 50;
+  }
+  return numArray;
+};
+
+const getBikeBrands = async () => {
+  for (const brand of Object.keys(appStore.allBikes)) {
+    if (brand.includes("_atv")) {
+      brandOptions.value["atv"].push(brand.replace(/_\w+/g, ""));
+    }
+    if (brand.includes("_bikes")) {
+      brandOptions.value["bikes"].push(brand.replace(/_\w+/g, ""));
+    }
+    if (brand.includes("_scooters")) {
+      brandOptions.value["scooters"].push(brand.replace(/_\w+/g, ""));
+    }
+  }
+};
+
+const globalFilters = ref({
+  global: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  bike_name: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  price: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  old_price: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  is_gallery: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  capacitate: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  main_year: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  category: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  rabla: { value: null, matchMode: FilterMatchMode.CONTAINS },
+  permis: { value: null, matchMode: FilterMatchMode.CONTAINS },
 });
 
 const newTable = ref({
@@ -371,6 +648,15 @@ const tableTypes = ref([
 ]);
 
 const currentDialogImage = ref("");
+
+const permisChange = () => {
+  currentBike.value.permis = [];
+  if (permisValue.value.length > 0) {
+    for (const permis of permisValue.value) {
+      currentBike.value.permis.push(permis);
+    }
+  }
+};
 
 const saveNewTable = async () => {
   const { name, type } = newTable.value;
@@ -406,6 +692,10 @@ const saveChanges = async () => {
     detail: `Modificari salvate`,
     life: 3000,
   });
+  showDialog.value = false;
+  setTimeout(() => {
+    refreshBikes();
+  }, 50);
 };
 
 const editTable = (brand) => {
@@ -420,8 +710,8 @@ const saveTableChanges = async () => {
     info: { brand, vehicle_type },
   });
   if (response) {
-    currentTable.value.brand = ""
-    currentTable.vehicle_type = ""
+    currentTable.value.brand = "";
+    currentTable.vehicle_type = "";
     toast.add({
       severity: "success",
       summary: "Success",
@@ -432,11 +722,18 @@ const saveTableChanges = async () => {
 };
 
 const editBike = (bike) => {
+  getBikeBrands();
   showDialog.value = true;
   currentBike.value = { ...bike };
+  permisValue.value = bike.permis;
+  if (currentBike.value.capacitate) {
+    currentBike.value.capacitate =
+      Math.round(parseInt(currentBike.value.capacitate) / 50) * 50;
+  }
 };
 
 const showCurrentBikes = (brand) => {
+  localStorage.setItem("currentBrand", brand);
   currentBrand.value = brand;
   currentBikes.value = appStore.allBikes[brand];
 };
@@ -445,8 +742,8 @@ const refreshBikes = async () => {
   await appStore.getAllBikes();
   if (appStore.allBikes) {
     bikeBrands.value = Object.keys(appStore.allBikes);
-    currentBrand.value = bikeBrands.value[0];
-    currentBikes.value = appStore.allBikes[bikeBrands.value[0]];
+    currentBrand.value = localStorage.getItem("currentBrand") ? localStorage.getItem("currentBrand") : bikeBrands.value[0];
+    currentBikes.value = appStore.allBikes[currentBrand.value];
 
     toast.add({
       severity: "success",
@@ -454,6 +751,7 @@ const refreshBikes = async () => {
       detail: `Tabele actualizate`,
       life: 3000,
     });
+    isLoading.value = false;
   }
 };
 
@@ -483,12 +781,14 @@ const removeImage = (image) => {
 };
 
 onMounted(async () => {
+  getBikeBrands();
   refreshBikes();
 });
 
 watch(currentBike, () => {
-  console.log(currentBike.value);
+  console.log("currentBike.value", currentBike.value);
   currentDialogImage.value = currentBike.value ? currentBike.value.image : "";
+  currentBike.permis = permisValue.value;
   showDialog.value = true;
 });
 </script>
@@ -499,6 +799,9 @@ watch(currentBike, () => {
 .home-view {
   display: flex;
   gap: 2rem;
+  position: relative;
+  z-index: 5;
+  background: var(--surface-0);
 }
 
 /* Using original class names */
@@ -515,6 +818,8 @@ nav {
   flex: 1;
   padding: 0 1rem;
   background: var(--surface-50);
+  position: relative;
+  z-index: 1;
 
   h2 {
     text-align: center;
@@ -542,17 +847,30 @@ nav {
       display: flex;
       flex-flow: row nowrap;
       margin: 0.25rem 0;
-      background: var(--primary-color);
-      color: var(--primary-color-text);
       padding: 0.5rem;
       border-radius: 6px;
+      text-transform: uppercase;
 
       &:hover {
         cursor: pointer;
-        background: var(--blue-300);
+        background: var(--blue-700);
       }
     }
   }
+}
+
+.loading-data {
+  display: flex;
+  flex-flow: column;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: 100vh;
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 10;
+  background: var(--surface-50);
 }
 
 /* Using original class names */
@@ -574,6 +892,10 @@ main {
     height: 100vh;
     gap: 1rem;
   }
+}
+
+.bike-column {
+  width: 100%;
 }
 
 /* Using original class names */
@@ -696,7 +1018,7 @@ main {
   display: flex;
   flex-flow: row nowrap;
   gap: 0.5rem;
-  .p-button{
+  .p-button {
     width: 2.5rem;
   }
 }
@@ -722,8 +1044,8 @@ main {
 }
 
 .new-table-dialog {
-  width: 30vw;
-  height: 50vh;
+  width: 60vw;
+  height: 70vh;
   border-radius: 6px;
   .p-dialog-content {
     display: flex;
@@ -751,6 +1073,18 @@ main {
   }
 }
 
+.table-example {
+  display: flex;
+  flex-flow: column;
+  table {
+    margin-bottom: 1rem;
+    td {
+      text-align: center;
+      border: 1px solid var(--surface-300);
+      width: 5rem;
+    }
+  }
+}
 /* Updated media query to reflect the changes made to .left-info */
 @media screen and (max-width: 1366px) {
   .p-dialog {
@@ -784,6 +1118,23 @@ main {
   }
   .right-info {
     flex: 5;
+  }
+  .new-table-dialog {
+    width: 90vw;
+    height: 90vh;
+    .p-dialog-content {
+      display: flex;
+      flex-flow: column;
+    }
+    .form-row {
+      display: flex;
+      gap: 1rem;
+      margin-top: 2rem;
+      height: fit-content;
+    }
+    .p-dropdown {
+      width: 100%;
+    }
   }
 }
 </style>

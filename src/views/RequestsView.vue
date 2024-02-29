@@ -1,5 +1,10 @@
 <template>
+  <div class="loading-data" v-if="isLoading">
+    <h1>Se incarca...</h1>
+    <ProgressSpinner />
+  </div>
   <DataTable
+    v-else
     v-model:filters="requestFilters"
     :value="allRequests"
     :rowClass="getRowClass"
@@ -15,7 +20,11 @@
     ]"
   >
     <template #header>
-      <Button severity="success" icon="pi pi-refresh" @click="refreshRequests()" />
+      <Button
+        severity="success"
+        icon="pi pi-refresh"
+        @click="refreshRequests()"
+      />
       <IconField iconPosition="left">
         <InputIcon>
           <i class="pi pi-search" />
@@ -136,13 +145,14 @@ import { onMounted, ref, watchEffect } from "vue";
 import Button from "primevue/button";
 import Dialog from "primevue/dialog";
 import { useConfirm } from "primevue/useconfirm";
-import { useToast } from "primevue/usetoast";
 import IconField from "primevue/iconfield";
 import InputIcon from "primevue/inputicon";
 import InputText from "primevue/inputtext";
 import { useAppStore } from "../store/app.store";
 import { FilterMatchMode } from "primevue/api";
 import ConfirmPopup from "primevue/confirmpopup";
+import ProgressSpinner from "primevue/progressspinner";
+const isLoading = ref(true);
 const appStore = useAppStore();
 
 const allRequests = ref();
@@ -150,7 +160,6 @@ const currentRequest = ref();
 const showRequestDialog = ref(false);
 const serviceOptions = ref();
 const confirm = useConfirm();
-const toast = useToast();
 
 const requestFilters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -165,7 +174,14 @@ const requestFilters = ref({
 
 onMounted(async () => {
   await appStore.getServiceInfo();
-  allRequests.value = appStore.allRequests;
+  if (appStore.allRequests) {
+    allRequests.value = appStore.allRequests;
+    isLoading.value = false;
+  }else{
+    setTimeout(() => {
+      isLoading.value = false;
+    }, 3000);
+  }
 });
 
 const refreshRequests = async () => {
@@ -204,8 +220,8 @@ const deleteRequest = (event, data) => {
       allRequests.value = appStore.allRequests;
       await appStore.getServiceInfo();
       allRequests.value = appStore.allRequests;
-    }
-  })
+    },
+  });
 };
 
 const getServiceArray = (currentRequest) => {
