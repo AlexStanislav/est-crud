@@ -36,8 +36,34 @@ import ToastService from 'primevue/toastservice';
 import './index.css';
 import 'primevue/resources/themes/aura-dark-blue/theme.css';
 import 'primeicons/primeicons.css'
+import { useAppStore } from './store/app.store';
 const pinia = createPinia();
 const app = createApp(App);
+
+window.electronAPI.onBikeScraped((bike) => {
+  const appStore = useAppStore()
+  appStore.addToScrapeLog(`Informatii preluate pentru: ${bike}`)
+})
+
+window.electronAPI.onTableScraped((table) => {
+  const appStore = useAppStore()
+  appStore.addToScrapeLog(`Tabel creat pentru: ${table}`)
+})
+
+window.electronAPI.onDataInserted((data) => {
+  const appStore = useAppStore()
+  appStore.addToScrapeLog(`Informatii inserate in tabel: ${data}`)
+})
+
+window.electronAPI.onDataScraped(() => {
+  const appStore = useAppStore()
+  appStore.addToScrapeLog(`Informatii extrase`)
+})
+
+window.electronAPI.onScrapeError((data) => {
+  const appStore = useAppStore()
+  appStore.addToScrapeLog(`Eroare: ${data}`)  
+})
 
 app.use(PrimeVue);
 app.use(pinia);

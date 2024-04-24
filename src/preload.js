@@ -5,7 +5,7 @@ import { contextBridge, ipcRenderer } from 'electron'
 contextBridge.exposeInMainWorld('electronAPI', {
     connectToDatabase: (data) => ipcRenderer.invoke('connect-to-database', data),
     getInfo: () => ipcRenderer.invoke('get-info'),
-    updateBike: (bike, tableName) => ipcRenderer.invoke('update-bike', {bike, tableName}),
+    updateBike: (bike, tableName) => ipcRenderer.invoke('update-bike', { bike, tableName }),
     generateXLS: () => ipcRenderer.invoke('generate-xls'),
     uploadTable: () => ipcRenderer.invoke('upload-table'),
     saveNewTable: (data) => ipcRenderer.invoke('save-new-table', data),
@@ -13,5 +13,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getServiceInfo: () => ipcRenderer.invoke('get-service-requests'),
     deleteRequest: (id) => ipcRenderer.invoke('delete-request', id),
     markRequestAsActive: (id) => ipcRenderer.invoke('mark-request-as-active', id),
-    markRequestAsInactive: (id) => ipcRenderer.invoke('mark-request-as-inactive', id)
+    markRequestAsInactive: (id) => ipcRenderer.invoke('mark-request-as-inactive', id),
+    scrapeInfo: () => ipcRenderer.invoke('scrape-info'),
+    scrapeSpecific: (scrapeId) => ipcRenderer.invoke(`${scrapeId}`),
+    getPiniaStore: () => getPiniaStore(),
+    onBikeScraped: (cb) => ipcRenderer.on('bike-scraped', (event, data) => cb(data)),
+    onTableScraped: (cb) => ipcRenderer.on('table-created', (event, data) => cb(data)),
+    onDataInserted: (cb) => ipcRenderer.on('data-inserted', (event, data) => cb(data)),
+    onDataScraped: (cb) => ipcRenderer.on('data-scraped', (event, data) => cb(data)),
+    onScrapeError: (cb) => ipcRenderer.on('error', (event, data) => cb(data)),
 })

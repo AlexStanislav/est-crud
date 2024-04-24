@@ -11,6 +11,18 @@
             title="Incarca tabel nou"
           ></Button>
           <Button
+            icon="pi pi-download"
+            severity="default"
+            title="Descarca informatii"
+            @click="showScrapeDialog = true"
+          ></Button>
+          <Button
+            icon="pi pi-list"
+            severity="info"
+            title="Vezi log"
+            @click="appStore.toggleScrapeLog(true)"
+          ></Button>
+          <Button
             icon="pi pi-refresh"
             severity="info"
             @click="refreshBikes()"
@@ -295,6 +307,7 @@
                 { name: 'Motociclete', value: 'bikes' },
                 { name: 'Scutere', value: 'scooters' },
                 { name: 'Atv', value: 'atv' },
+                { name: 'SSV', value: 'ssv' },
               ]"
               placeholder="Tip vehicul"
               optionLabel="name"
@@ -321,6 +334,27 @@
               offLabel="Nu"
             />
           </div> -->
+        </div>
+        <div class="form-row main-image">
+          <h2>Imagine Slideshow</h2>
+          <div class="form-column">
+            <InputText
+              type="text"
+              v-model="currentBike.gallery_image"
+              title="Imagine principala"
+            />
+            <Image class="preview-image" preview>
+              <template #indicatoricon>
+                <i class="pi pi-eye"></i>
+              </template>
+              <template #image>
+                <i class="pi pi-eye"></i>
+              </template>
+              <template #preview>
+                <img :src="currentBike.gallery_image" alt="preview" />
+              </template>
+            </Image>
+          </div>
         </div>
         <div class="form-row main-image">
           <h2>Imagine principala</h2>
@@ -361,7 +395,7 @@
               v-for="image in currentBike.gallery"
               :key="image"
             >
-              <InputText type="text" :value="image" />
+              <InputText type="text" :value="image.replace('$http', 'http')" />
               <Image class="preview-image" preview>
                 <template #indicatoricon>
                   <i class="pi pi-eye"></i>
@@ -370,7 +404,7 @@
                   <i class="pi pi-eye"></i>
                 </template>
                 <template #preview>
-                  <img :src="image" alt="preview" />
+                  <img :src="image.replace('$http', 'http')" alt="preview" />
                 </template>
               </Image>
               <i
@@ -407,7 +441,7 @@
         />
       </div>
       <div class="form-row table-example">
-        <h2>Model Tabel</h2>
+        <h2>Model Coloane Tabel</h2>
         <table>
           <tr>
             <td>A</td>
@@ -482,7 +516,12 @@
         <h2>Editeaza Coloana tabel</h2>
       </template>
       <div class="form-row">
-        <!-- <Dropdown v-model="currentTable.brand" :options="brandOptions[currentTable['name'].split('_')[1]]" class="bike-column" placeholder="Marca"/> -->
+        <Dropdown
+          v-model="currentTable.brand"
+          :options="brandOptions[currentTable['name'].split('_')[1]]"
+          class="bike-column"
+          placeholder="Marca"
+        />
         <FloatLabel>
           <InputText type="text" v-model="currentTable.vehicle_type" />
           <label>Tip vehicul {{ currentTable.name }}</label>
@@ -497,13 +536,36 @@
         />
       </div>
     </Dialog>
+    <Dialog
+      v-model:visible="appStore.showScrapeLog"
+      modal
+      class="scrape-log-dialog"
+      style="min-width: 100vw; min-height: 100vh"
+    >
+      <template #header>
+        <h1>Scrape Log</h1>
+      </template>
+      <div class="scrape-log">
+        <pre>{{ appStore.scrapeLog }}</pre>
+      </div>
+    </Dialog>
+    <Dialog v-model:visible="showScrapeDialog" modal class="scrape-dialog" header="Descarca informatii vehicule">
+      <Button
+        icon="pi pi-download"
+        :label="`Descarca ${scraper.replace('scrape-', '').replace('-snowmobiles', ' snowmobile') }`"
+        v-for="scraper of scrapeList"
+        :key="scraper"
+        @click="scrapeSpecific(scraper)">
+      </Button>
+      <Button icon="pi pi-download" label="Descarca toate" @click="scrapeInfo()"></Button>
+    </Dialog>
     <ConfirmPopup></ConfirmPopup>
     <Toast></Toast>
   </div>
 </template>
 <script setup>
 import ProgressSpinner from "primevue/progressspinner";
-import { onMounted, ref, watch } from "vue";
+import { VueElement, onMounted, ref, watch } from "vue";
 import { useAppStore } from "../store/app.store";
 import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
@@ -545,10 +607,31 @@ const permisOptions = ref([
   { name: "B", value: "B" },
 ]);
 
+const showScrapeDialog = ref(false);
+
+const scrapeList = [
+  "scrape-motoboom",
+  "scrape-aspgroup",
+  "scrape-atvrom",
+  "scrape-beneli",
+  "scrape-beta",
+  "scrape-kymco",
+  "scrape-piaggio",
+  "scrape-polaris",
+  "scrape-polaris-snowmobiles",
+  "scrape-segway",
+  "scrape-suzuki",
+  "scrape-swm",
+  "scrape-sym",
+  "scrape-vespa",
+  "scrape-yamaha",
+];
+
 const bikeCategories = ref({
   bikes: ["Sport", "Naked", "Touring", "Adventure", "Dual Sport", "Cruiser"],
   scooters: ["Sport", "Utility", "Copii"],
-  atv: ["Sport", "Utility", "Copii", "Touring", "Side-by-side"],
+  atv: ["Sport", "Utility", "Copii", "Touring"],
+  snowmobiles: ["Utility", "Trail", "Copii", "Mountain", "Crossover"],
 });
 
 const rablaOptions = ref([
@@ -560,6 +643,8 @@ const brandOptions = ref({
   bikes: [],
   scooters: [],
   atv: [],
+  ssv: [],
+  snowmobiles: [],
 });
 
 const yearOptions = ref([
@@ -595,18 +680,33 @@ const tableExample = ref([
 
 const capacityOptions = () => {
   const numArray = [];
-  let i = 50;
+  let i = 25;
   while (i <= 5000) {
     numArray.push(i);
-    i += 50;
+    i += 25;
   }
   return numArray;
 };
 
+const scrapeInfo = async () => {
+  appStore.toggleScrapeLog(true);
+  await appStore.scrapeInfo();
+};
+
+const scrapeSpecific = async (scrapeId) => {
+  showScrapeDialog.value = false;
+  appStore.toggleScrapeLog(true);
+  await appStore.scrapeSpecific(scrapeId);
+};
+
 const getBikeBrands = async () => {
   for (const brand of Object.keys(appStore.allBikes)) {
+    console.log(brand);
     if (brand.includes("_atv")) {
       brandOptions.value["atv"].push(brand.replace(/_\w+/g, ""));
+    }
+    if (brand.includes("_ssv")) {
+      brandOptions.value["ssv"].push(brand.replace(/_\w+/g, ""));
     }
     if (brand.includes("_bikes")) {
       brandOptions.value["bikes"].push(brand.replace(/_\w+/g, ""));
@@ -614,7 +714,20 @@ const getBikeBrands = async () => {
     if (brand.includes("_scooters")) {
       brandOptions.value["scooters"].push(brand.replace(/_\w+/g, ""));
     }
+    if (brand.includes("_snowmobiles")) {
+      brandOptions.value["snowmobiles"].push(brand.replace(/_\w+/g, ""));
+    }
   }
+
+  brandOptions.value["atv"] = brandOptions.value["atv"].filter((value) => {
+    if (value !== "aspgroup") {
+      return value;
+    }
+  });
+
+  brandOptions.value["atv"].push("linhai");
+  brandOptions.value["atv"].push("tgb");
+  brandOptions.value["atv"].push("argo");
 };
 
 const globalFilters = ref({
@@ -645,6 +758,8 @@ const tableTypes = ref([
   { name: "Motociclete", value: "bikes" },
   { name: "Scutere", value: "scooters" },
   { name: "ATV", value: "atv" },
+  { name: "SSV", value: "ssv" },
+  { name: "Snowmobile", value: "snowmobiles" },
 ]);
 
 const currentDialogImage = ref("");
@@ -728,7 +843,7 @@ const editBike = (bike) => {
   permisValue.value = bike.permis;
   if (currentBike.value.capacitate) {
     currentBike.value.capacitate =
-      Math.round(parseInt(currentBike.value.capacitate) / 50) * 50;
+      Math.round(parseInt(currentBike.value.capacitate) / 25) * 25;
   }
 };
 
@@ -742,7 +857,10 @@ const refreshBikes = async () => {
   await appStore.getAllBikes();
   if (appStore.allBikes) {
     bikeBrands.value = Object.keys(appStore.allBikes);
-    currentBrand.value = localStorage.getItem("currentBrand") ? localStorage.getItem("currentBrand") : bikeBrands.value[0];
+    bikeBrands.value.sort();
+    currentBrand.value = localStorage.getItem("currentBrand")
+      ? localStorage.getItem("currentBrand")
+      : bikeBrands.value[0];
     currentBikes.value = appStore.allBikes[currentBrand.value];
 
     toast.add({
@@ -1135,6 +1253,14 @@ main {
     .p-dropdown {
       width: 100%;
     }
+  }
+}
+
+.scrape-dialog {
+  height: 50vh;
+  .p-dialog-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
   }
 }
 </style>
