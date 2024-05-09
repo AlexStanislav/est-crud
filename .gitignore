@@ -94,3 +94,6 @@ out/
 
 #Electron-builder output
 /dist_electron
+
+*.xlsx
+*.xls

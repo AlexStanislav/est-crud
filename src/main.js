@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog, session } = require('electron');
 const path = require('path');
 const xlsx = require('node-xlsx');
+const xlsxUtils = require('xlsx')
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
 const { URL } = require('url');
@@ -105,7 +106,7 @@ function createDynamicPool(user, password, host, database) {
     host: host,
     database: database,
     port: 5432,
-    ssl: { rejectUnauthorized: false }
+    // ssl: { rejectUnauthorized: false }
   });
 }
 
@@ -203,31 +204,52 @@ ipcMain.handle('get-info', async () => {
         bike.price = null
       }
 
-      if (bike.price !== null && bike.price !== undefined && bike.price !== "null" && bike.price !== "undefined" && bike.price.includes("{")) {
-        bike.price = parseInt(bike.price.replace(/[{}]/g, "").replace(/\"/g, "").split(",")[0].replace(/[.,\s]+/g, ""))
-      } else if (bike.price !== null && bike.price !== undefined && bike.price !== "null" && bike.price !== "undefined") {
-
-        bike.price = parseInt(bike.price.replace(/[.,\s]+/g, ""))
-      }
-
-      if (bike.old_price !== null && bike.old_price !== undefined && bike.old_price !== "null" && bike.old_price !== "undefined") {
-        bike.old_price = parseInt(bike.old_price.replace(/[.,\s]+/g, ""))
-      }
-
-      if (bike.old_price === null || bike.old_price === undefined || bike.old_price === "null" || bike.old_price === "undefined") {
+      if (bike.old_price === "undefined" || bike.old_price === "null" || bike.old_price === null || bike.old_price === undefined) {
         bike.old_price = null
       }
 
-      if (bike.price === null && bike.old_price !== null) {
-        bike.price = bike.old_price
+      if (bike.price !== null) {
+        bike.price = (bike.price.replace(/[.\s]+/g, ''))
+      }
+      if (bike.old_price !== null) {
+        bike.old_price = (bike.old_price.replace(/[.\s]+/g, ''))
       }
 
-      if (bike.price === bike.old_price) {
-        bike.old_price = null
+      if (bike.price !== null) {
+        if (bike.price.includes('{')) {
+          bike.price = JSON.parse(bike.price.replace("{", "[").replace("}", "]").toLowerCase().replace("NULL", "").replace("[,", "["))
+        } else {
+          bike.price = [(bike.price)]
+        }
+      }
+
+      if (bike.old_price !== null) {
+        if (bike.old_price.includes('{')) {
+          bike.old_price = JSON.parse(bike.old_price.replace("{", "[").replace("}", "]").toLowerCase().replace("NULL", "").replace("[,", "["))
+        } else {
+          bike.old_price = [(bike.old_price)]
+        }
+      }
+
+      if (bike.colors === "undefined" || bike.colors === "null" || bike.colors === null || bike.colors === undefined) {
+        bike.colors = null
+      }
+
+      if (bike.colors !== null) {
+        bike.colors = JSON.parse(bike.colors.replace("{", "[").replace("}", ']'))
+      }
+
+      if (bike.colors_display === "undefined" || bike.colors_display === "null" || bike.colors_display === null || bike.colors_display === undefined) {
+        bike.colors_display = null
+      }
+
+      if (bike.colors_display !== null) {
+        bike.colors_display = bike.colors_display.replace('"{', '{').replace('}"', '}').replace(/\\"/g, '"')
       }
     }
   }
 
+  connection.release()
   return bikes
 })
 
@@ -247,7 +269,7 @@ ipcMain.handle('get-service-requests', async () => {
 
 ipcMain.handle('update-bike', async (event, data) => {
   const connection = await dynamicPool.connect();
-  const {
+  let {
     id,
     bike_name,
     bike_description,
@@ -267,10 +289,14 @@ ipcMain.handle('update-bike', async (event, data) => {
     is_gallery,
     is_popular,
     capacitate,
-    vehicle_type
+    vehicle_type,
+    omologare,
+    colors,
+    display_model,
+    colors_display
   } = data.bike;
 
-  const permisValue = permis.length === 0 ? null : permis
+  let permisValue = permis.length === 0 ? null : permis
 
   const updateQuery = {
     text: `
@@ -294,8 +320,12 @@ ipcMain.handle('update-bike', async (event, data) => {
         is_gallery = $16,
         is_popular = $17,
         capacitate = $18,
-        vehicle_type = $19
-      WHERE id = $20
+        vehicle_type = $19,
+        omologare = $20,
+        colors = $21,
+        display_model = $22,
+        colors_display = $23
+      WHERE id = $24
     `,
     values: [
       bike_name,
@@ -317,14 +347,106 @@ ipcMain.handle('update-bike', async (event, data) => {
       is_popular,
       capacitate,
       vehicle_type,
+      omologare,
+      colors,
+      display_model,
+      colors_display,
       id
     ]
   };
 
-
-  await connection.query(updateQuery);
-  console.log("Updated bike");
+  try {
+    await connection.query(updateQuery);
+    console.log("Updated bike");
+  } catch (error) {
+    console.log(error);
+  } finally {
+    connection.release();
+  }
 });
+
+ipcMain.handle('download-xls', async (event, data) => {
+  const connection = await dynamicPool.connect();
+  const query = `SELECT * FROM ${data}`
+  const table = []
+  try {
+    const bikes = await connection.query(query)
+    const file = JSON.stringify(bikes.rows).replace(/\\"/g, "'").replace(/\n/g, '')
+    const bikesArr = JSON.parse(file)
+    table.push(Object.keys(bikesArr[0]))
+
+    bikesArr.forEach(bike => {
+      table.push([
+        bike.id,
+        bike.bike_name,
+        bike.bike_slogan,
+        bike.bike_description,
+        bike.main_year,
+        bike.price,
+        bike.old_price,
+        bike.currency,
+        bike.image,
+        bike.gallery,
+        bike.category,
+        bike.rabla,
+        bike.permis,
+        bike.capacitate,
+        bike.is_gallery,
+        bike.gallery_image,
+        bike.gallery_title,
+        bike.gallery_description,
+        bike.is_popular,
+        bike.brand,
+        bike.vehicle_type,
+        bike.omologare,
+        bike.colors,
+        bike.display_model,
+        bike.colors_display
+      ])
+    })
+
+    const sheetOptions = {
+      '!cols': [
+        { wch: 5 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 20 },
+        { wch: 40 },
+      ]
+    }
+
+    const buffer = xlsx.build([{ name: 'bikes', data: table }], { sheetOptions })
+    fs.writeFileSync(`./${data}.xlsx`, buffer)
+    return {
+      success: true
+    }
+  } catch (error) {
+    console.log(error)
+    return { success: false }
+  } finally {
+    connection.release()
+  }
+})
 
 let currentXLSFile = null
 
@@ -349,6 +471,41 @@ ipcMain.handle('upload-table', async (event) => {
     return { success: false }
   }
 })
+
+ipcMain.handle('update-table', async (event, data) => {
+  const connection = await dynamicPool.connect()
+  const tableColumnNames = currentXLSFile[0].data[0]
+
+  for (let i = 1; i < currentXLSFile[0].data.length; i++) {
+    console.log(`Updating row ${i}`)
+    let tableQuery = `UPDATE public.${data} SET `
+    const row = currentXLSFile[0].data[i]
+    for (let j = 1; j < tableColumnNames.length; j++) {
+      const columnName = tableColumnNames[j]
+      let value = row[j]
+      if (value !== undefined && typeof value === 'string' && value.includes("'")) {
+        value = value.replace(/'/g, '"')
+      }
+      tableQuery += `${columnName} = '${value}'`
+      if (j < tableColumnNames.length - 1) {
+        tableQuery += ', '
+      }
+    }
+    tableQuery += ` WHERE id = '${row[0]}';`
+
+    try {
+      await connection.query(tableQuery)
+    } catch (error) {
+      console.log(error)
+      return { success: false }
+    }
+  }
+
+
+  connection.release()
+  return { success: true }
+})
+
 
 ipcMain.handle('save-new-table', async (event, data) => {
   const connection = await dynamicPool.connect()
@@ -520,7 +677,8 @@ const getInfoMotoboom = async (url, type, tableName, categoryUrl) => {
       },
       image: imageData,
       gallery: [],
-      category: null
+      category: null,
+      omologare: null,
     }
 
     if (bikeName !== "") {
@@ -563,7 +721,7 @@ const getInfoMotoboom = async (url, type, tableName, categoryUrl) => {
         const infoArray = []
 
         for (const detail of specificationDetails) {
-          if (detail.label.toLowerCase().includes('capacitate')) {
+          if (detail.label.toLowerCase().includes('capacitate') || detail.label.toLowerCase().includes('matriculabil')) {
             infoArray.push(detail)
           }
         }
@@ -571,9 +729,19 @@ const getInfoMotoboom = async (url, type, tableName, categoryUrl) => {
         for (const detail of infoArray) {
           if (detail.label.toLowerCase().includes("model")) {
             if (bikes[bikeName]) {
-              bikes[bikeName].mainYear = detail.value
+              bikesInfo[tableName][bikeName].mainYear = detail.value
               infoArray.splice(infoArray.indexOf(detail), 1)
             }
+          }
+
+          if (detail.label.toLowerCase().includes("matriculabil")) {
+            bikesInfo[tableName][bikeName].omologare = detail.value.replace(/\n/g, "")
+            if (bikesInfo[tableName][bikeName].omologare === "da") {
+              bikesInfo[tableName][bikeName].omologare = ["t3b"]
+            } else {
+              bikesInfo[tableName][bikeName].omologare = null
+            }
+            infoArray.splice(infoArray.indexOf(detail), 1)
           }
         }
 
@@ -625,6 +793,60 @@ const getInfoMotoboom = async (url, type, tableName, categoryUrl) => {
   }
 
   browser.close().then(() => { console.log(`${tableName} scraped`) })
+}
+
+const getApriliaGallery = async (url) => {
+  const browser = await puppeteer.launch({ headless: "new" })
+  const page = await browser.newPage()
+
+  await page.goto(url, { waitUntil: "networkidle0" })
+
+  const $ = cheerio.load(await page.content())
+
+  const gallery = []
+
+  const categoryLinks = []
+
+  $('a.card-product').each((index, element) => {
+    const link = $(element).attr('href')
+    categoryLinks.push("https://www.aprilia.com" + link)
+  })
+
+  console.log(categoryLinks)
+
+  // for (const model of categoryLinks) {
+  //   await page.goto(model, { waitUntil: "networkidle0" })
+
+  //   const $ = cheerio.load(await page.content())
+
+  //   const modelLinks = []
+
+  //   $('a.card-product').each((index, element) => {
+  //     const link = $(element).attr('href')
+  //     modelLinks.push("https://www.aprilia.com" + link)
+  //   })
+
+  //   for (const link of modelLinks) {
+  //     await page.goto(link, { waitUntil: "networkidle0" })
+
+  //     const $ = cheerio.load(await page.content())
+
+  //     const images = []
+
+  //     $('.image-container').each((index, element) => {
+  //       const image = $(element).find('img').attr('src')
+  //       images.push(image)
+  //     })
+
+  //     const bikeName = link.split("/")[6].split("-").slice(0, 2).join("-")
+  //     gallery.push({
+  //       [bikeName]: images
+  //     })
+  //   }
+  // }
+  
+  browser.close().then(() => { console.log("Aprilia gallery scraped") })
+  // return gallery
 }
 
 const getInfoAspGroup = async (url, tableName) => {
@@ -702,31 +924,35 @@ const getInfoAspGroup = async (url, tableName) => {
 
     const priceInfoElement = $('.price-wrapper').text().split("De la")
 
-    let oldPrice = null
-    let priceInfo = null
+    const oldPriceInfo = []
+    const priceInfo = []
+    const omologare = []
 
-    priceInfo = parseInt(priceInfoElement[1].split("€")[1].replace(".", ''))
-    oldPrice = parseInt(priceInfoElement[1].split("€")[0].replace(".", ''))
+    const cleanPriceInfoElement = priceInfoElement.map(element => element.replace(/\s+/g, ' ').trim()).filter(element => element.length > 0)
 
-    // if (priceInfoElement.length === 3) {
-    //   priceInfo = [priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim(), priceInfoElement[2].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim()]
+    for (const price of cleanPriceInfoElement) {
+      let priceArray = price.toLowerCase().split("(tva inclus)")
+      let priceString = priceArray[0]
 
-    //   const oldPriceArray = priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")
+      let regularPrice = priceString.split("€")[1].trim()
+      let oldPrice = priceString.split("€")[0].trim()
 
-    //   if (oldPriceArray.length === 3) {
-    //     oldPrice = oldPriceArray[0].trim()
-    //     priceInfo = [oldPriceArray[1].trim(), priceInfoElement[2].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim()]
-    //   }
-    // } else {
-    //   priceInfo = priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim()
+      if (regularPrice === '') {
+        regularPrice = oldPrice
+        oldPrice = null
+      } else if (oldPrice === '') {
+        oldPrice = null
+      }
 
-    //   const oldPriceArray = priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")
+      let omologareString = priceArray[1]
 
-    //   if (oldPriceArray.length === 3) {
-    //     oldPrice = oldPriceArray[0].trim()
-    //     priceInfo = oldPriceArray[1].trim()
-    //   }
-    // }
+      let omologareMatch = omologareString.match(/\w\d\w/g)
+
+      priceInfo.push(regularPrice)
+      oldPriceInfo.push(oldPrice)
+      omologare.push(omologareMatch !== null ? omologareMatch[0] : null)
+
+    }
 
     const getInfo = async function () {
       const info = []
@@ -779,7 +1005,7 @@ const getInfoAspGroup = async (url, tableName) => {
       mainYear: null,
       priceInfo: {
         price: priceInfo,
-        oldPrice,
+        oldPrice: oldPriceInfo,
         currency: "EUR"
       },
       category: category,
@@ -790,7 +1016,8 @@ const getInfoAspGroup = async (url, tableName) => {
           label: "Capacitate cilindrica",
           value: `${motorInfo}cc`
         }
-      ]
+      ],
+      omologare
     }
 
     bikesInfo[tableName][bikeName] = bikeObj
@@ -1106,7 +1333,7 @@ const getInfoBeta = async (url, tableName) => {
     });
 
     for (const spec of bikeSpecs) {
-      const finalName = `${$('h3.av-special-heading-tag').first().text().trim()}-(${spec})`
+      const finalName = (`${$('h3.av-special-heading-tag').first().text().trim()}-(${spec})`).replace(/-\(.+\)/g, '')
       const bikeName = $('h3.av-special-heading-tag').first().text().trim()
       const bikeDesc = $('div.avia_textblock').find('p').first().text().trim()
 
@@ -1443,7 +1670,21 @@ const getInfoPolaris = async function (url, tableName) {
 
             const $ = cheerio.load(await page.content())
 
-            const bikeName = `${link.split("/")[3]}-${link.split("/")[4]}`
+            const bikeNameElement = $('h3')
+
+            const nameArr = []
+            bikeNameElement.map((index, element) => {
+              const bikeName = $(element).find('strong').text().trim()
+              nameArr.push(bikeName)
+            })
+
+            nameArr.slice(0, 2)
+
+            const bikeName = nameArr.length > 0 ? nameArr[0].toLowerCase().replace(" ", "-").trim() + ' ' + nameArr[1].toLowerCase().replace(" ", "-").trim() : null
+
+            const omologareStrings = ['t3b', 'l7e']
+            const omologareMatch = new RegExp(omologareStrings.join("|"), "g")
+            const omologare = (`${link.split("/")[3]}-${link.split("/")[4]}`).match(omologareMatch)
 
             let motorInfo = null
             if ($('.a1').text().includes("CC")) {
@@ -1520,10 +1761,12 @@ const getInfoPolaris = async function (url, tableName) {
                   label: "Capacitate cilindrica",
                   value: `${motorInfo}cc`
                 }
-              ]
+              ],
+              omologare: omologare
             }
 
             bikesInfo[tableName][bikeName] = bikeObj
+
 
             mainWindow.webContents.send('bike-scraped', bikeName)
             console.log(`${bikeName} scraped`)
@@ -1599,30 +1842,51 @@ const getInfoSegway = async function (url, tableName) {
     const bikeDesc = await getDesc()
 
     const imageData = `https://segwaypowersports.ro${$('#slick-slide00').attr("style").replace("background-image", "").replace(":", "").replace("url", "").split(";")[0].replace(/\"/g, "").replace(/[\(\)]+/g, "").trim()}`
+
     const priceInfoElement = $('.price-wrapper').text().split("De la")
 
-    let oldPrice = null
-    let priceInfo = null
+    const oldPriceInfo = []
+    const priceInfo = []
+    const omologare = []
 
-    if (priceInfoElement.length === 3) {
-      priceInfo = [priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim(), priceInfoElement[2].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim()]
+    const cleanPriceInfoElement = priceInfoElement.map(element => element.replace(/\s+/g, ' ').trim()).filter(element => element.length > 0)
 
-      const oldPriceArray = priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")
+    if (!cleanPriceInfoElement[0].includes("curând")) {
+      for (const price of cleanPriceInfoElement) {
+        let priceArray = price.toLowerCase().split("(tva inclus)")
+        let priceString = priceArray[0]
 
-      if (oldPriceArray.length === 3) {
-        oldPrice = oldPriceArray[0].trim()
-        priceInfo = [oldPriceArray[1].trim(), priceInfoElement[2].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim()]
-      }
-    } else {
-      priceInfo = priceInfoElement[1] !== undefined ? priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim() : priceInfoElement[0].replace("(TVA inclus)\n\nOmologare", "").split("€")[0].trim()
+        let regularPrice = priceString.split("€")[1].trim()
+        let oldPrice = priceString.split("€")[0].trim()
 
-      const oldPriceArray = priceInfoElement[1] !== undefined ? priceInfoElement[1].replace("(TVA inclus)\n\nOmologare", "").split("€") : priceInfoElement[0].replace("(TVA inclus)\n\nOmologare", "").split("€")
+        if (regularPrice === '') {
+          regularPrice = oldPrice
+          oldPrice = null
+        } else if (oldPrice === '') {
+          oldPrice = null
+        }
 
-      if (oldPriceArray.length === 3) {
-        oldPrice = oldPriceArray[0].trim()
-        priceInfo = oldPriceArray[1].trim()
+        let omologareString = priceArray[1]
+
+        let omologareMatch = omologareString.match(/\w\d\w/g)
+
+        priceInfo.push(regularPrice)
+        oldPriceInfo.push(oldPrice)
+        omologare.push(omologareMatch !== null ? omologareMatch[0] : null)
+
       }
     }
+
+    const colors = []
+
+    // const colorsElement = $('.product-icons').find('img')
+
+    // colorsElement.each((index, element) => {
+    //   const fileExtenstions = ['.png', '.jpg', '.jpeg', '.gif', '.svg', '.bmp', '.tiff', '.ico']
+    //   const match = new RegExp(`(${fileExtenstions.join('|')})$`)
+    //   const color = $(element).attr('alt').replace(match, '')
+    //   colors.push(color)
+    // })
 
 
     const getInfo = async function () {
@@ -1673,7 +1937,7 @@ const getInfoSegway = async function (url, tableName) {
       mainYear: null,
       priceInfo: {
         price: priceInfo,
-        oldPrice,
+        oldPrice: oldPriceInfo,
         currency: "EUR"
       },
       category: null,
@@ -1684,7 +1948,9 @@ const getInfoSegway = async function (url, tableName) {
           label: "Capacitate cilindrica",
           value: `${motorInfo}cc`
         }
-      ]
+      ],
+      omologare: omologare,
+      colors: colors
     }
 
     bikesInfo[tableName][bikeName] = bikeObj
@@ -1833,26 +2099,15 @@ const getInfoSwm = async function (url, tableName) {
 
   const $ = cheerio.load(await page.content())
 
-  const getLinks = async function () {
-    const slideElement = $('.wpcp-slide-image')
+  const slideElements = $('.wpcp-slide-image').find('a')
 
-    const links = []
-    const slidePromise = slideElement.map(async (index, element) => {
-      const link = $(element).find('a').attr('href')
-      if (link.includes('/swm-moto/')) {
-        return link
-      }
-    }).get()
+  slideElements.each((index, element) => {
+    const link = $(element).attr('href')
+    if (link.includes('/swm-moto/'))
+      bikesLinks[tableName].push(link)
+  })
 
-    const resolvedSlide = await Promise.all(slidePromise)
-
-
-    links.push(...resolvedSlide)
-
-    return links
-  }
-
-  bikesLinks[tableName] = await getLinks()
+  bikesLinks[tableName] = [...new Set(bikesLinks[tableName])]
 
   for (const link of bikesLinks[tableName]) {
     if (link === undefined) continue
@@ -2272,13 +2527,134 @@ const getInfoYamaha = async function (url, tableName) {
   browser.close().then(() => console.log(`${tableName} scraped`))
 }
 
-const motoBoomBikes = [
+const getInfoMotoguzzi = async function (url, tableName) {
+  const browser = await puppeteer.launch({ headless: "new" })
+  const page = await browser.newPage()
+  await page.goto(url, { waitUntil: "networkidle0" })
+
+  const $ = cheerio.load(await page.content())
+
+  bikesInfo[tableName] = {}
+  bikesLinks[tableName] = []
+
+  let categories = []
+
+  $('.listing__item').each((index, element) => {
+      if ($(element).find('a').attr('href').includes("models")) {
+          const link = $(element).find('a').attr('href')
+          categories.push(link)
+      }
+  })
+
+  categories = [...new Set(categories)]
+
+  const baseUrl = "https://www.motoguzzi.com/us_EN/"
+  for (const categoryLink of categories) {
+      const finalLink = baseUrl + categoryLink.replace("/us_EN/", "")
+      await page.goto(finalLink, { waitUntil: "networkidle0" })
+      const $ = cheerio.load(await page.content())
+      $('.card-product').each((index, element) => {
+          const link = $(element).attr('href')
+          if (link.split("/").length === 6) {
+              bikesLinks[tableName].push(link)
+          }
+      })
+
+  }
+
+  bikesLinks[tableName] = [...new Set(bikesLinks[tableName])]
+
+  const baseURL = "https://www.motoguzzi.com/us_EN/"
+  for (const link of bikesLinks[tableName]) {
+      const finalLink = baseURL + link.replace("/us_EN/", "")
+      await page.goto(finalLink, { waitUntil: "networkidle0" })
+      const $ = cheerio.load(await page.content())
+      const bikeName = $('.title').text().trim() !== "" ? $('.title').text().trim() : $('.product-presentation__title').text().trim()
+      const html = link.split("/")[4]
+      const mainYear = html.split("-")[html.split("-").length - 1]
+      const getSlogan = async function () {
+          const slogan = $('.icon-text__title')
+
+          const sloganText = slogan.map((index, element) => {
+              return $(element).text()
+          }).get()
+
+          const finalSlogan = await Promise.all(sloganText)
+
+          return finalSlogan.join(" ")
+      }
+      const bikeSlogan = await getSlogan()
+      const bikeDesc = $('.editorial-icon__text').find('p').text().trim()
+      const price = $('.product-price__list').text().trim().split(" ")[1]
+
+      const getImage = async () => {
+          const image = $('.image')
+
+          const imageSrc = image.map((index, element) => {
+              const src = $(element).attr('src')
+              if (src !== undefined && src.includes("vehicles")) {
+                  return src
+              }
+          }).get()
+
+          const imageData = await Promise.all(imageSrc)
+
+          return imageData[0]
+      }
+
+      const gallery = []
+
+      $('.swiper-slide').find('img').each((index, element) => {
+          gallery.push($(element).attr('src'))
+      })
+
+      const imageData = await getImage() !== undefined ? await getImage() : null
+
+      const category = link.split("/")[3]
+
+      const bikeObj = {
+          bikeName,
+          bikeSlogan,
+          bikeDesc,
+          mainYear,
+          priceInfo: {
+              price,
+              oldPrice: null,
+              currency: "EUR"
+          },
+          image: imageData,
+          gallery: gallery,
+          category: category,
+          info: []
+      }
+
+      bikesInfo[tableName][bikeName] = bikeObj
+
+      mainWindow.webContents.send('bike-scraped', bikeName)
+      console.log(`${bikeName} scraped`);
+  }
+
+  browser.close().then(() => console.log(`${tableName} scraped`))
+}
+
+const motoguzziBikes = [
+  {
+      url: 'https://www.motoguzzi.com/us_EN/models/',
+      type: 'motocicleta',
+      tableName: 'motoguzzi',
+  }
+]
+
+const apriliaBikes = [
   {
     url: 'https://www.motoboom.ro/moto-Aprilia?limit=100',
     type: 'motocicleta',
     tableName: 'aprilia',
-    categoryUrl: null
-  },
+    categoryUrl: 'https://www.aprilia.com/en_EN/models/'
+  }
+]
+
+const motoBoomBikes = [
   {
     url: 'https://www.motoboom.ro/scuter-aprilia?limit=100',
     type: 'scuter',
@@ -2297,6 +2673,9 @@ const motoBoomBikes = [
     tableName: 'kawasaki',
     categoryUrl: 'https://www.kawasaki.eu/en/Motorcycles.html'
   },
+]
+
+const motoBoomAtv = [
   {
     url: 'https://www.motoboom.ro/can-am?limit=100',
     type: 'atv',
@@ -2508,7 +2887,7 @@ const segwayBikes = [
   },
   {
     url: 'https://segwaypowersports.ro/utv',
-    type: 'atv',
+    type: 'ssv',
     tableName: 'segway',
   },
   {
@@ -2534,7 +2913,7 @@ const suzukiBikes = [
 
 const swmBikes = [
   {
-    url: 'https://swm-motorcycles.it/',
+    url: 'https://swm-motorcycles.it/range',
     type: 'motocicleta',
     tableName: 'swm',
   }
@@ -2645,7 +3024,10 @@ const dbQuery = async (bikesInfo, type, tableName, connection) => {
                 gallery_description text,
                 is_popular boolean,
                 brand text,
-                vehicle_type text
+                vehicle_type text,
+                omologare text,
+                colors VARCHAR(255),
+                display_model boolean
             )`
 
     try {
@@ -2726,17 +3108,29 @@ const dbQuery = async (bikesInfo, type, tableName, connection) => {
       infoQuery.values.push(bike.bikeName)
       infoQuery.values.push("no description")
       infoQuery.values.push(false)
-      infoQuery.values.push(tableName)
+      if (tableName === 'aspgroup') {
+        infoQuery.values.push(bike.category)
+      } else {
+        infoQuery.values.push(tableName)
+      }
       infoQuery.values.push(tableType)
+      infoQuery.values.push(bike.omologare)
+      if (bike.colors !== undefined) {
+        infoQuery.values.push(bike.colors)
+      } else {
+        infoQuery.values.push(null)
+      }
+      infoQuery.values.push(true)
 
-      infoQuery.text = `INSERT INTO public.${tableName}_${tableType} 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21) 
+      infoQuery.text = `INSERT INTO public.${tableName}_${tableType}
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
             ON CONFLICT (bike_name) DO UPDATE 
             SET price = COALESCE(EXCLUDED.price, public.${tableName}_${tableType}.price), 
                 old_price = COALESCE(EXCLUDED.old_price, public.${tableName}_${tableType}.old_price),
                 image = COALESCE(EXCLUDED.image, public.${tableName}_${tableType}.image), 
                 gallery = COALESCE(EXCLUDED.gallery, public.${tableName}_${tableType}.gallery),
-                vehicle_type = COALESCE(EXCLUDED.vehicle_type, public.${tableName}_${tableType}.vehicle_type);`
+                omologare = COALESCE(EXCLUDED.omologare, public.${tableName}_${tableType}.omologare),
+                colors = COALESCE(EXCLUDED.colors, public.${tableName}_${tableType}.colors);`
 
       try {
         await connection.query(infoQuery)
@@ -2779,6 +3173,7 @@ const processSuzuki = async (array, getInfo, connection) => {
 const scraper = async (connection) => {
   try {
     await processMotoBoomBike(motoBoomBikes, getInfoMotoboom, connection)
+    await processMotoBoomBike(motoBoomAtv, getInfoMotoboom, connection)
     await processBike(aspgroupBikes, getInfoAspGroup, connection)
     await processBike(atvromBikes, getInfoAtvRom, connection)
     await processBike(beneliBikes, getInfoBeneli, connection)
@@ -2793,6 +3188,7 @@ const scraper = async (connection) => {
     await processBike(symBikes, getInfoSym, connection)
     await processBike(vespaBikes, getInfoVespa, connection)
     await processBike(yamahaBikes, getInfoYamaha, connection)
+    await processBike(motoguzziBikes, getInfoMotoguzzi, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
     console.log(error)
@@ -2803,10 +3199,36 @@ const scraper = async (connection) => {
 }
 
 
-ipcMain.handle('scrape-motoboom', async (event) => {
+ipcMain.handle('scrape-aprilia-bikes', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processMotoBoomBike(apriliaBikes, getInfoMotoboom, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
+ipcMain.handle('scrape-motoboom-bikes', async (event) => {
   const connection = await dynamicPool.connect()
   try {
     await processMotoBoomBike(motoBoomBikes, getInfoMotoboom, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
+ipcMain.handle('scrape-motoboom-atv', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processMotoBoomBike(motoBoomAtv, getInfoMotoboom, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
     console.log(error)
@@ -2872,6 +3294,19 @@ ipcMain.handle('scrape-kymco', async (event) => {
   const connection = await dynamicPool.connect()
   try {
     await processBike(kymcoBikes, getInfoKymco, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
+ipcMain.handle('scrape-motoguzzi', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processBike(motoguzziBikes, getInfoMotoguzzi, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
     console.log(error)

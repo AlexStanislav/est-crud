@@ -48,8 +48,10 @@ export const useAppStore = defineStore('app', {
             this.allBikes = allBikes
         },
         updateBike(bike, tableName) {
-            const { id, bike_name, bike_description, bike_slogan, price, old_price, image, gallery, brand, category, main_year, permis, rabla, gallery_image, gallery_description, gallery_title, is_gallery, is_popular, capacitate, vehicle_type } = bike
+            const { id, bike_name, bike_description, bike_slogan, image, gallery, brand, category, main_year, permis, rabla, gallery_image, gallery_description, gallery_title, is_gallery, is_popular, capacitate, vehicle_type, omologare, colors, display_model, colors_display } = bike
             const imagesArray = gallery.map(image => image);
+            const price = JSON.stringify(bike.price).replace("[", "{").replace("]", "}")
+            const old_price = JSON.stringify(bike.old_price).replace("[", "{").replace("]", "}")
             const updateBike = {
                 id,
                 bike_name,
@@ -70,14 +72,29 @@ export const useAppStore = defineStore('app', {
                 is_gallery,
                 is_popular,
                 capacitate,
-                vehicle_type
+                vehicle_type,
+                omologare,
+                colors,
+                display_model,
+                colors_display
             }
             console.log(updateBike)
             updateBike.permis = [...new Set(permis)]
+            updateBike.colors = [...new Set(colors)]
+            updateBike.omologare = [...new Set(omologare)]
+            updateBike.colors_display = JSON.stringify(updateBike.colors_display).replace('"{', '{').replace('}"', '}').replace(/\\"/g, '"')
             window.electronAPI.updateBike(updateBike, tableName)
+        },
+        async updateTable(tableName) {
+            const response = await window.electronAPI.updateTable(tableName)
+            return response
         },
         async uploadTable() {
             const response = await window.electronAPI.uploadTable()
+            return response
+        },
+        async downloadTable(data) {
+            const response = await window.electronAPI.downloadTable(data)
             return response
         },
         async saveNewTable(data) {

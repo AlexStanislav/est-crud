@@ -5,7 +5,7 @@
         Tabele
         <div class="actions-container">
           <Button
-            icon="pi pi-plus"
+            icon="pi pi-table"
             severity="success"
             @click="showNewTableDialog = true"
             title="Incarca tabel nou"
@@ -75,6 +75,11 @@
             placeholder="Cauta"
           />
         </template>
+        <Column sortable header="ID">
+          <template #body="slotProps">
+            {{ slotProps.index + 1 }}
+          </template>
+        </Column>
         <Column sortable field="bike_name" header="Nume">
           <template #filter="{ filterModel }">
             <InputText
@@ -116,7 +121,7 @@
               class="p-column-filter"
             /> </template
         ></Column>
-        <Column sortable field="capacitate" header="Capacitate">
+        <!-- <Column sortable field="capacitate" header="Capacitate">
           <template #body="slotProps">
             {{ slotProps.data.capacitate ? slotProps.data.capacitate : "Gol" }}
           </template>
@@ -127,7 +132,7 @@
               class="p-column-filter"
             />
           </template>
-        </Column>
+        </Column> -->
         <Column sortable field="category" header="Categorie">
           <template #body="slotProps">
             {{ slotProps.data.category ? slotProps.data.category : "Gol" }}
@@ -217,12 +222,15 @@
           </FloatLabel>
         </div>
         <div class="form-row">
-          <FloatLabel>
-            <InputText type="number" v-model="currentBike.price" />
+          <FloatLabel v-for="(price, index) in currentBike.price" :key="index">
+            <InputText type="text" v-model="currentBike.price[index]" />
             <label>Pret</label>
           </FloatLabel>
-          <FloatLabel>
-            <InputText type="number" v-model="currentBike.old_price" />
+          <FloatLabel
+            v-for="(price, index) in currentBike.old_price"
+            :key="index"
+          >
+            <InputText type="number" v-model="currentBike.old_price[index]" />
             <label>Pret vechi</label>
           </FloatLabel>
         </div>
@@ -318,6 +326,19 @@
           </FloatLabel>
         </div>
         <div class="form-row">
+          <FloatLabel>
+            <MultiSelect
+              v-model="omologareValue"
+              :options="omologareOptions"
+              placeholder="Omlogare"
+              display="chip"
+              class="bike-column"
+              @change="omologareChange"
+            ></MultiSelect>
+            <label>Omologare</label>
+          </FloatLabel>
+        </div>
+        <div class="form-row">
           <div class="form-column">
             <label>Exista in slideshow?</label>
             <ToggleButton
@@ -326,14 +347,12 @@
               offLabel="Nu"
             />
           </div>
-          <!-- <div class="form-column">
-            <label>Exista in modele populare?</label>
-            <ToggleButton
-              v-model="currentBike.is_popular"
-              onLabel="Da"
-              offLabel="Nu"
-            />
-          </div> -->
+          <Button
+            severity="warning"
+            icon="pi pi-pencil"
+            label="Editeaza informatii culori"
+            @click="showEditColorsDialog = true"
+          />
         </div>
         <div class="form-row main-image">
           <h2>Imagine Slideshow</h2>
@@ -422,90 +441,162 @@
       <template #footer>
         <Button label="Salveaza" severity="success" @click="saveChanges()" />
       </template>
+      <Dialog
+        v-model:visible="showEditColorsDialog"
+        modal
+        style="max-width: 55vw;height: fit-content"
+        class="edit-colors-dialog"
+      >
+        <template #header>
+          <h3>Editeaza Culori</h3>
+        </template>
+        <Button severity="info" icon="pi pi-plus" @click="addColor()" />
+        <ul class="edit-colors-list">
+          <li v-for="(color, mainIndex) in currentBike.colors" :key="mainIndex">
+            <div class="edit-color-name">
+              <span class="edit-color-label">Nume culoare: </span
+              ><InputText
+                class="edit-color-input"
+                v-model="currentBike.colors[mainIndex]"
+                :readonly="canChangeColorName"
+              />
+              <Button v-if="canChangeColorName" severity="warning" icon="pi pi-pencil" @click="editColorName(mainIndex)" />
+              <Button v-else severity="success" icon="pi pi-check" @click="saveColorName(currentBike.colors[mainIndex], mainIndex)" />
+            </div>
+            <div class="color-picker-container">
+              <span class="edit-color-label">Culoare: </span>
+              <span
+                class="color-picker-wrapper"
+                v-if="Array.isArray(colorModel[color])"
+              >
+                <span
+                  v-for="(element, index) in colorModel[color]"
+                  :key="index"
+                >
+                  <ColorPicker
+                    v-model="colorModel[color][index]"
+                    format="hex"
+                  />
+                </span>
+              </span>
+              <span class="color-picker-wrapper" v-else>
+                <ColorPicker v-model="colorModel[color]" format="hex" />
+              </span>
+              <Button
+                class="color-picker-button"
+                severity="info"
+                icon="pi pi-plus"
+                @click="addColorShade(mainIndex)"
+              />
+            </div>
+            <div>
+              <span class="edit-color-label">Valoare HEX: </span>
+              <InputText
+                class="edit-color-input"
+                v-model="colorModel[color]"
+                @input="handleColorModelChange($event, color)"
+              />
+            </div>
+            <!-- <Button severity="danger" label="Sterge culoare" @click="removeColor(index, color)" /> -->
+          </li>
+        </ul>
+        <template #footer>
+          <Button severity="success" label="Salveaza" @click="saveColors()" />
+        </template>
+      </Dialog>
     </Dialog>
     <Dialog v-model:visible="showNewTableDialog" modal class="new-table-dialog">
       <template #header>
         <h1>Adaugare Tabel</h1>
       </template>
-
-      <div class="form-row">
-        <FloatLabel>
-          <InputText type="text" v-model="newTable.name" />
-          <label>Nume Tabel</label>
-        </FloatLabel>
-        <Dropdown
-          v-model="newTable.type"
-          :options="tableTypes"
-          :option-label="'name'"
-          placeholder="Tip Tabel"
-        />
+      <div class="download-table">
+        <h2>Descarca Tabel</h2>
+        <div class="form-row">
+          <Dropdown
+            v-model="tableToDownload"
+            :options="bikeBrands"
+            placeholder="Selecteaza Tabel"
+          />
+        </div>
+        <div class="form-row">
+          <Button
+            label="Descarca Tabel"
+            severity="info"
+            @click="downloadTable()"
+          />
+        </div>
       </div>
-      <div class="form-row table-example">
-        <h2>Model Coloane Tabel</h2>
-        <table>
-          <tr>
-            <td>A</td>
-            <td>B</td>
-            <td>C</td>
-            <td>D</td>
-            <td>E</td>
-            <td>F</td>
-            <td>G</td>
-            <td>H</td>
-            <td>I</td>
-          </tr>
-          <tr>
-            <td
-              v-for="(column, index) of tableExample.slice(0, 9)"
-              :key="index"
-            >
-              {{ column }}
-            </td>
-          </tr>
-        </table>
-        <table>
-          <tr>
-            <td>J</td>
-            <td>K</td>
-            <td>L</td>
-            <td>M</td>
-            <td>N</td>
-            <td>O</td>
-            <td>P</td>
-            <td>Q</td>
-            <td>R</td>
-            <td>S</td>
-          </tr>
-          <tr>
-            <td
-              v-for="(column, index) of tableExample.slice(9, 19)"
-              :key="index"
-            >
-              {{ column }}
-            </td>
-          </tr>
-        </table>
+      <div class="update-table">
+        <h2>Actualizeaza Tabel</h2>
+        <div class="form-row">
+          <Dropdown
+            v-model="tableToUpdate"
+            :options="bikeBrands"
+            placeholder="Selecteaza Tabel"
+          />
+        </div>
+        <div class="form-row">
+          <InputText
+            type="text"
+            v-model="tableToUpdateName"
+            placeholder="Nume fisier incarcat..."
+            readonly
+          />
+        </div>
+        <div class="form-row">
+          <Button
+            label="Selecteaza Fisier"
+            severity="warning"
+            icon="pi pi-file"
+            @click="uploadXLSUpdate()"
+          />
+        </div>
+        <div class="form-row">
+          <Button
+            label="Actualizeaza Tabel"
+            severity="info"
+            @click="updateTable()"
+          />
+        </div>
       </div>
-      <div class="form-row">
-        <InputText
-          type="text"
-          placeholder="Nume fisier incarcat..."
-          v-model="currentTableFilename"
-          readonly
-        />
+      <div class="upload-table">
+        <h2>Incarca Tabel Nou</h2>
+        <div class="form-row">
+          <FloatLabel>
+            <InputText type="text" v-model="newTable.name" />
+            <label>Nume Tabel Nou</label>
+          </FloatLabel>
+          <Dropdown
+            v-model="newTable.type"
+            :options="tableTypes"
+            :option-label="'name'"
+            placeholder="Tip Tabel"
+          />
+        </div>
+        <div class="form-row">
+          <InputText
+            type="text"
+            placeholder="Nume fisier incarcat..."
+            v-model="currentTableFilename"
+            readonly
+          />
+        </div>
+        <div class="form-row">
+          <Button
+            label="Selecteaza Fisier"
+            severity="warning"
+            icon="pi pi-file"
+            @click="uploadXLS()"
+          />
+        </div>
+        <div class="form-row">
+          <Button
+            label="Incarca Tabel"
+            severity="info"
+            @click="saveNewTable()"
+          />
+        </div>
       </div>
-      <div class="form-row">
-        <Button
-          label="Incarca XLS"
-          severity="warning"
-          icon="pi pi-upload"
-          @click="uploadXLS()"
-        />
-        <!-- <Button label="Genereaza XLS Exemplu" severity="info" icon="pi pi-file" @click="generateXLS()" /> -->
-      </div>
-      <template #footer>
-        <Button label="Salveaza" severity="success" @click="saveNewTable()" />
-      </template>
     </Dialog>
     <Dialog
       v-model:visible="showTableEditDialog"
@@ -549,15 +640,29 @@
         <pre>{{ appStore.scrapeLog }}</pre>
       </div>
     </Dialog>
-    <Dialog v-model:visible="showScrapeDialog" modal class="scrape-dialog" header="Descarca informatii vehicule">
+    <Dialog
+      v-model:visible="showScrapeDialog"
+      modal
+      class="scrape-dialog"
+      header="Descarca informatii vehicule"
+    >
       <Button
         icon="pi pi-download"
-        :label="`Descarca ${scraper.replace('scrape-', '').replace('-snowmobiles', ' snowmobile') }`"
+        :label="`Descarca ${scraper
+          .replace('scrape-', '')
+          .replace('-snowmobiles', ' snowmobile')
+          .replace('-bikes', ' motociclete')
+          .replace('-atv', ' atv')}`"
         v-for="scraper of scrapeList"
         :key="scraper"
-        @click="scrapeSpecific(scraper)">
+        @click="scrapeSpecific(scraper)"
+      >
       </Button>
-      <Button icon="pi pi-download" label="Descarca toate" @click="scrapeInfo()"></Button>
+      <Button
+        icon="pi pi-download"
+        label="Descarca toate"
+        @click="scrapeInfo()"
+      ></Button>
     </Dialog>
     <ConfirmPopup></ConfirmPopup>
     <Toast></Toast>
@@ -565,7 +670,7 @@
 </template>
 <script setup>
 import ProgressSpinner from "primevue/progressspinner";
-import { VueElement, onMounted, ref, watch } from "vue";
+import { VueElement, computed, onMounted, ref, watch } from "vue";
 import { useAppStore } from "../store/app.store";
 import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
@@ -584,6 +689,7 @@ import Toast from "primevue/toast";
 import Image from "primevue/image";
 import Dropdown from "primevue/dropdown";
 import MultiSelect from "primevue/multiselect";
+import ColorPicker from "primevue/colorpicker";
 import { FilterMatchMode } from "primevue/api";
 
 const toast = useToast();
@@ -607,15 +713,25 @@ const permisOptions = ref([
   { name: "B", value: "B" },
 ]);
 
+const omologareValue = ref()
+const omologareOptions = ref([])
+
+const tableToDownload = ref("");
+const tableToUpdate = ref("");
+const tableToUpdateName = ref("");
+
 const showScrapeDialog = ref(false);
 
 const scrapeList = [
-  "scrape-motoboom",
+  "scrape-aprilia-bikes",
+  "scrape-motoboom-bikes",
+  "scrape-motoboom-atv",
   "scrape-aspgroup",
   "scrape-atvrom",
   "scrape-beneli",
   "scrape-beta",
   "scrape-kymco",
+  "scrape-motoguzzi",
   "scrape-piaggio",
   "scrape-polaris",
   "scrape-polaris-snowmobiles",
@@ -628,10 +744,10 @@ const scrapeList = [
 ];
 
 const bikeCategories = ref({
-  bikes: ["Sport", "Naked", "Touring", "Adventure", "Dual Sport", "Cruiser"],
-  scooters: ["Sport", "Utility", "Copii"],
-  atv: ["Sport", "Utility", "Copii", "Touring"],
-  snowmobiles: ["Utility", "Trail", "Copii", "Mountain", "Crossover"],
+  bikes: ["Sport", "Naked", "Touring", "Adventure", "Dual Sport", "Cruiser", "Scrambler", "Bobber", "Children"],
+  scooters: ["Sport", "Utility", "Children",],
+  atv: ["Sport", "Utility", "Children", "Touring"],
+  snowmobiles: ["Utility", "Trail", "Children", "Mountain", "Crossover"],
 });
 
 const rablaOptions = ref([
@@ -699,9 +815,13 @@ const scrapeSpecific = async (scrapeId) => {
   await appStore.scrapeSpecific(scrapeId);
 };
 
+const getBikeOmologare = (bike) => {
+  const omologareString = bike.omologare.replace("{", "[").replace("}", "]")
+  omologareValue.value = JSON.parse(omologareString)
+}
+
 const getBikeBrands = async () => {
   for (const brand of Object.keys(appStore.allBikes)) {
-    console.log(brand);
     if (brand.includes("_atv")) {
       brandOptions.value["atv"].push(brand.replace(/_\w+/g, ""));
     }
@@ -773,10 +893,78 @@ const permisChange = () => {
   }
 };
 
+const omologareChange = () => {
+  currentBike.value.omologare = [];
+  if (omologareValue.value.length > 0) {
+    for (const omologare of omologareValue.value) {
+      currentBike.value.omologare.push(omologare);
+    }
+  }
+}
+
+const downloadTable = async () => {
+  const result = await appStore.downloadTable(tableToDownload.value);
+  if (result.success) {
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: `Tabel descarcat`,
+      life: 3000,
+    });
+  } else {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: `Tabelul nu a putut fi descarcat`,
+      life: 3000,
+    });
+  }
+};
+
 const saveNewTable = async () => {
   const { name, type } = newTable.value;
   const response = await appStore.saveNewTable({ name, type: type.value });
   console.log(response);
+};
+
+const uploadXLSUpdate = async () => {
+  const result = await appStore.uploadTable();
+  if (result.success) {
+    tableToUpdateName.value = result.fileName;
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: `Tabel incarcat`,
+      life: 3000,
+    });
+  } else {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: `Tabelul nu a putut fi incarcat`,
+      life: 3000,
+    });
+  }
+};
+
+const updateTable = async () => {
+  const result = await appStore.updateTable(tableToUpdate.value);
+  if (result.success) {
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: `Tabel actualizat`,
+      life: 3000,
+    });
+  }
+  if (!result.success) {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: `Tabelul nu a putut fi actualizat`,
+      life: 3000,
+    });
+  }
 };
 
 const uploadXLS = async () => {
@@ -836,15 +1024,110 @@ const saveTableChanges = async () => {
   }
 };
 
+const showEditColorsDialog = ref(false);
+const colorModel = ref({});
+
 const editBike = (bike) => {
   getBikeBrands();
   showDialog.value = true;
   currentBike.value = { ...bike };
   permisValue.value = bike.permis;
+  currentBike.value.colors_display = bike.colors_display;
+
+  if (currentBike.value.colors_display !== null) {
+    colorModel.value = JSON.parse(currentBike.value.colors_display);
+  } else {
+    colorModel.value = {};
+  }
+
   if (currentBike.value.capacitate) {
     currentBike.value.capacitate =
       Math.round(parseInt(currentBike.value.capacitate) / 25) * 25;
   }
+  if (bike.colors === null) {
+    bike.colors = [];
+  }
+
+  omologareOptions.value = ["t3b", "l7e"]
+
+  getBikeOmologare(currentBike.value)
+};
+
+const handleColorModelChange = (event, index) => {
+  if (typeof colorModel.value[index] === "string") {
+    if (colorModel.value[index].includes(",")) {
+      colorModel.value[index] = colorModel.value[index].split(",");
+    }
+  }
+};
+const currentColorName = ref("")
+const canChangeColorName = ref(true);
+const editColorName = (index) => {
+  canChangeColorName.value = !canChangeColorName.value;
+  currentColorName.value = currentBike.value.colors[index];
+};
+
+const saveColorName = (colorName, index) => {
+  const colorDisplay = JSON.parse(currentBike.value.colors_display)
+  const colorDisplayValue = colorDisplay[currentColorName.value]
+  colorModel.value[colorName] = colorDisplayValue
+  colorDisplay[colorName] = colorDisplayValue
+  
+  delete colorDisplay[currentColorName.value]
+  delete colorModel.value[currentColorName.value]
+  
+  currentBike.value.colors_display = JSON.stringify(colorDisplay)
+  canChangeColorName.value = !canChangeColorName.value;
+}
+
+const addColorShade = (index) => {
+  const color = currentBike.value.colors[index];
+  if (color === "") {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: `Introdu un nume pentru culoare!`,
+      life: 3000,
+    });
+  }
+
+  if (colorModel.value[color] === undefined) {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: `Introdu sau alege o valoare HEX pentru culoare!`,
+      life: 3000,
+    });
+  } else {
+    const colorArr = [];
+    colorArr.push(colorModel.value[color]);
+    colorArr.push("");
+    colorModel.value[color] = colorArr;
+    console.log(colorModel.value);
+    console.log(currentBike.value.colors);
+    console.log(currentBike.value.colors_display);
+  }
+};
+
+const addColor = () => {
+  if (currentBike.value.colors === null) {
+    currentBike.value.colors = [""];
+  } else {
+    currentBike.value.colors.push("");
+  }
+};
+
+const removeColor = (index, color) => {
+  currentBike.value.colors.splice(index, 1);
+  const colors_display = JSON.parse(currentBike.value.colors_display);
+  delete colors_display[color];
+  currentBike.value.colors_display = JSON.stringify(colors_display);
+};
+
+const saveColors = () => {
+  currentBike.value.colors_display = colorModel.value;
+  showEditColorsDialog.value = false;
+  console.log(currentBike.value.colors_display);
 };
 
 const showCurrentBikes = (brand) => {
@@ -904,16 +1187,24 @@ onMounted(async () => {
 });
 
 watch(currentBike, () => {
-  console.log("currentBike.value", currentBike.value);
   currentDialogImage.value = currentBike.value ? currentBike.value.image : "";
-  currentBike.permis = permisValue.value;
+  currentBike.value.permis = permisValue.value;
+  currentBike.value.omologare = omologareValue.value;
   showDialog.value = true;
+});
+
+watch(showDialog, () => {
+  const body = document.getElementsByTagName("body")[0];
+  if (!showDialog.value) {
+    body.style.overflow = "auto";
+  } else {
+    body.style.overflow = "hidden";
+  }
 });
 </script>
 <style lang="scss">
 /* Using original class names and refactoring the code to use SASS features */
 
-/* Using original class names */
 .home-view {
   display: flex;
   gap: 2rem;
@@ -922,7 +1213,6 @@ watch(currentBike, () => {
   background: var(--surface-0);
 }
 
-/* Using original class names */
 .table-actions {
   display: flex;
   gap: 1rem;
@@ -931,7 +1221,6 @@ watch(currentBike, () => {
   }
 }
 
-/* Using original class names */
 nav {
   flex: 1;
   padding: 0 1rem;
@@ -991,12 +1280,10 @@ nav {
   background: var(--surface-50);
 }
 
-/* Using original class names */
 main {
   flex: 6;
 }
 
-/* Using original class names */
 .p-dialog {
   border-radius: 0;
 
@@ -1016,19 +1303,16 @@ main {
   width: 100%;
 }
 
-/* Using original class names */
 .left-info {
   width: 35vw;
 }
 
-/* Using original class names */
 .right-info {
   width: 65vw;
   display: flex;
   flex-flow: column;
   gap: 1rem;
 
-  /* Using original class names */
   .gallery-column {
     width: 100%;
     & .p-input-icon-left {
@@ -1051,7 +1335,6 @@ main {
     }
   }
 
-  /* Using original class names */
   .gallery-row {
     width: 100%;
     display: flex;
@@ -1060,14 +1343,84 @@ main {
   }
 }
 
-/* Using original class names */
+.edit-colors-dialog {
+  position: relative;
+  .p-dialog-header {
+    h3 {
+      width: 300px;
+    }
+  }
+  .p-button:not(.p-button:last-child) {
+    position: absolute;
+    width: 3rem;
+    top: 2.3rem;
+    right: 5rem;
+  }
+}
+
+.edit-colors-dialog .p-dialog-content {
+  height: fit-content;
+}
+.edit-colors-list {
+  list-style: none;
+  margin: 0;
+  padding: 1rem;
+  display: flex;
+  flex-flow: row wrap;
+  gap: 2rem;
+  div {
+    margin-bottom: 0.5rem;
+    color: silver;
+  }
+}
+
+.color-picker-wrapper {
+  display: flex;
+  height: 30px;
+}
+.color-picker-container {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.edit-color-input {
+  width: 150px !important;
+}
+.p-colorpicker {
+  padding: 0;
+  margin: 0;
+  .p-inputtext {
+    width: 30px;
+    height: 30px;
+  }
+}
+.edit-color-name {
+  display: flex;
+  .p-button{
+    width: 40px;
+  }
+}
+.edit-color-label {
+  display: inline-block;
+  width: 130px;
+  font-weight: bold;
+  color: #fff;
+  text-align: right;
+  margin-right: 0.5rem;
+}
+.color-picker-button {
+  width: 30px;
+  padding: 0;
+  height: 30px;
+  margin: 0;
+}
 .form-row {
   display: flex;
   gap: 1rem;
   margin-top: 2rem;
 }
 
-/* Using original class names */
 .form-column {
   display: flex;
   align-items: center;
@@ -1075,14 +1428,12 @@ main {
   margin-right: 2rem;
 }
 
-/* Using original class names */
 .p-float-label,
 .p-inputtext,
 .p-input-icon-left {
   width: 100%;
 }
 
-/* Using original class names */
 .gallery-header {
   display: flex;
   gap: 2rem;
@@ -1115,13 +1466,11 @@ main {
   border-radius: 4px;
 }
 
-/* Using original class names */
 .pi-eye,
 .pi-image {
   cursor: pointer;
 }
 
-/* Using original class names */
 .pi-times {
   cursor: pointer;
   margin-left: 0.5rem;
@@ -1141,7 +1490,6 @@ main {
   }
 }
 
-/* Using original class names */
 .p-inputtextarea {
   resize: none;
   text-align: justify;
@@ -1150,7 +1498,6 @@ main {
   height: 35vh;
 }
 
-/* Using original class names */
 .img-container {
   width: 25vw;
   border-radius: 6px;
@@ -1162,12 +1509,24 @@ main {
 }
 
 .new-table-dialog {
-  width: 60vw;
-  height: 70vh;
+  width: 50vw;
+  height: 80vh;
   border-radius: 6px;
+  text-align: center;
+  display: flex;
+  justify-content: center;
+  .download-table {
+    width: 100%;
+  }
+  .update-table {
+    width: 49%;
+  }
+  .upload-table {
+    width: 49%;
+  }
   .p-dialog-content {
     display: flex;
-    flex-flow: column;
+    flex-flow: row wrap;
   }
   .form-row {
     display: flex;

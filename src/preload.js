@@ -22,4 +22,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     onDataInserted: (cb) => ipcRenderer.on('data-inserted', (event, data) => cb(data)),
     onDataScraped: (cb) => ipcRenderer.on('data-scraped', (event, data) => cb(data)),
     onScrapeError: (cb) => ipcRenderer.on('error', (event, data) => cb(data)),
+    downloadTable: (data) => ipcRenderer.invoke('download-xls', data),
+    updateTable: (data) => ipcRenderer.invoke('update-table', data)
 })
