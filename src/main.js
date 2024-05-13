@@ -217,7 +217,8 @@ ipcMain.handle('get-info', async () => {
 
       if (bike.price !== null) {
         if (bike.price.includes('{')) {
-          bike.price = JSON.parse(bike.price.replace("{", "[").replace("}", "]").toLowerCase().replace("NULL", "").replace("[,", "["))
+          let price = bike.price.replace("{", "[").replace("}", "]").toLowerCase().replace("NULL", "").replace("[,", "[").replace(/\'/g, "")
+          bike.price = JSON.parse(price)
         } else {
           bike.price = [(bike.price)]
         }
@@ -225,7 +226,8 @@ ipcMain.handle('get-info', async () => {
 
       if (bike.old_price !== null) {
         if (bike.old_price.includes('{')) {
-          bike.old_price = JSON.parse(bike.old_price.replace("{", "[").replace("}", "]").toLowerCase().replace("NULL", "").replace("[,", "["))
+          let price = bike.old_price.replace("{", "[").replace("}", "]").toLowerCase().replace("NULL", "").replace("[,", "[").replace(/\'/g, "")
+          bike.old_price = JSON.parse(price)
         } else {
           bike.old_price = [(bike.old_price)]
         }
@@ -407,8 +409,8 @@ ipcMain.handle('download-xls', async (event, data) => {
 
     const sheetOptions = {
       '!cols': [
-        { wch: 5 },
-        { wch: 20 },
+        { wch: 50 },
+        { wch: 50 },
         { wch: 20 },
         { wch: 20 },
         { wch: 20 },
@@ -476,34 +478,78 @@ ipcMain.handle('update-table', async (event, data) => {
   const connection = await dynamicPool.connect()
   const tableColumnNames = currentXLSFile[0].data[0]
 
-  for (let i = 1; i < currentXLSFile[0].data.length; i++) {
-    console.log(`Updating row ${i}`)
-    let tableQuery = `UPDATE public.${data} SET `
-    const row = currentXLSFile[0].data[i]
-    for (let j = 1; j < tableColumnNames.length; j++) {
-      const columnName = tableColumnNames[j]
-      let value = row[j]
-      if (value !== undefined && typeof value === 'string' && value.includes("'")) {
-        value = value.replace(/'/g, '"')
-      }
-      tableQuery += `${columnName} = '${value}'`
-      if (j < tableColumnNames.length - 1) {
-        tableQuery += ', '
-      }
-    }
-    tableQuery += ` WHERE id = '${row[0]}';`
+  let deleteQuery = `DELETE FROM public.${data}`
 
-    try {
-      await connection.query(tableQuery)
-    } catch (error) {
-      console.log(error)
-      return { success: false }
+  try {
+    await connection.query(deleteQuery)
+
+    const tableQuery = {
+      text: '',
+      values: []
     }
+
+    for (let i = 1; i < currentXLSFile[0].data.length; i++) {
+      const row = currentXLSFile[0].data[i]
+      tableQuery.text = `INSERT INTO public.${data} (${tableColumnNames.map(column => column).join(', ')}) VALUES (${tableColumnNames.map((_, index) => `$${index + 1}`).join(', ')})`
+
+      tableQuery.values = [...row]
+
+      if(tableQuery.values[22] !== undefined){
+        tableQuery.values[22] = tableQuery.values[22].replace(/\'/g, '"')
+      }
+      
+      if(tableQuery.values[24] !== undefined){
+        tableQuery.values[24] = tableQuery.values[24].replace(/\'/g, '"')
+      }
+
+      try {
+        await connection.query(tableQuery)
+      } catch (error) {
+        console.log(error)
+        return { success: false }
+      }
+    }
+
+
+    return { success: true }
+
+  } catch (error) {
+    console.log(error)
+    return { success: false }
+  } finally {
+    connection.release()
   }
 
 
-  connection.release()
-  return { success: true }
+
+  // for (let i = 1; i < currentXLSFile[0].data.length; i++) {
+  //   console.log(`Updating row ${i}`)
+  //   let tableQuery = `UPDATE public.${data} SET `
+  //   const row = currentXLSFile[0].data[i]
+  //   for (let j = 1; j < tableColumnNames.length; j++) {
+  //     const columnName = tableColumnNames[j]
+  //     let value = row[j]
+  //     if (value !== undefined && typeof value === 'string' && value.includes("'")) {
+  //       value = value.replace(/'/g, '"')
+  //     }
+  //     tableQuery += `${columnName} = '${value}'`
+  //     if (j < tableColumnNames.length - 1) {
+  //       tableQuery += ', '
+  //     }
+  //   }
+  //   tableQuery += ` WHERE id = '${row[0]}';`
+
+  //   console.log(tableQuery)
+
+  //   try {
+  //     await connection.query(tableQuery)
+  //   } catch (error) {
+  //     console.log(error)
+  //     return { success: false }
+  //   }
+  // }
+
+
 })
 
 
@@ -844,7 +890,7 @@ const getApriliaGallery = async (url) => {
   //     })
   //   }
   // }
-  
+
   browser.close().then(() => { console.log("Aprilia gallery scraped") })
   // return gallery
 }
@@ -2540,25 +2586,25 @@ const getInfoMotoguzzi = async function (url, tableName) {
   let categories = []
 
   $('.listing__item').each((index, element) => {
-      if ($(element).find('a').attr('href').includes("models")) {
-          const link = $(element).find('a').attr('href')
-          categories.push(link)
-      }
+    if ($(element).find('a').attr('href').includes("models")) {
+      const link = $(element).find('a').attr('href')
+      categories.push(link)
+    }
   })
 
   categories = [...new Set(categories)]
 
   const baseUrl = "https://www.motoguzzi.com/us_EN/"
   for (const categoryLink of categories) {
-      const finalLink = baseUrl + categoryLink.replace("/us_EN/", "")
-      await page.goto(finalLink, { waitUntil: "networkidle0" })
-      const $ = cheerio.load(await page.content())
-      $('.card-product').each((index, element) => {
-          const link = $(element).attr('href')
-          if (link.split("/").length === 6) {
-              bikesLinks[tableName].push(link)
-          }
-      })
+    const finalLink = baseUrl + categoryLink.replace("/us_EN/", "")
+    await page.goto(finalLink, { waitUntil: "networkidle0" })
+    const $ = cheerio.load(await page.content())
+    $('.card-product').each((index, element) => {
+      const link = $(element).attr('href')
+      if (link.split("/").length === 6) {
+        bikesLinks[tableName].push(link)
+      }
+    })
 
   }
 
@@ -2566,72 +2612,76 @@ const getInfoMotoguzzi = async function (url, tableName) {
 
   const baseURL = "https://www.motoguzzi.com/us_EN/"
   for (const link of bikesLinks[tableName]) {
-      const finalLink = baseURL + link.replace("/us_EN/", "")
-      await page.goto(finalLink, { waitUntil: "networkidle0" })
-      const $ = cheerio.load(await page.content())
-      const bikeName = $('.title').text().trim() !== "" ? $('.title').text().trim() : $('.product-presentation__title').text().trim()
-      const html = link.split("/")[4]
-      const mainYear = html.split("-")[html.split("-").length - 1]
-      const getSlogan = async function () {
-          const slogan = $('.icon-text__title')
+    const finalLink = baseURL + link.replace("/us_EN/", "")
+    await page.goto(finalLink, { waitUntil: "networkidle0" })
+    const $ = cheerio.load(await page.content())
+    const bikeName = $('.title').text().trim() !== "" ? $('.title').text().trim() : $('.product-presentation__title').text().trim()
+    const html = link.split("/")[4]
+    const mainYear = html.split("-")[html.split("-").length - 1]
+    const getSlogan = async function () {
+      const slogan = $('.icon-text__title')
 
-          const sloganText = slogan.map((index, element) => {
-              return $(element).text()
-          }).get()
+      const sloganText = slogan.map((index, element) => {
+        return $(element).text()
+      }).get()
 
-          const finalSlogan = await Promise.all(sloganText)
+      const finalSlogan = await Promise.all(sloganText)
 
-          return finalSlogan.join(" ")
-      }
-      const bikeSlogan = await getSlogan()
-      const bikeDesc = $('.editorial-icon__text').find('p').text().trim()
-      const price = $('.product-price__list').text().trim().split(" ")[1]
+      return finalSlogan.join(" ")
+    }
+    const bikeSlogan = await getSlogan()
+    const bikeDesc = $('.editorial-icon__text').find('p').text().trim()
+    const price = $('.product-price__list').text().trim().split(" ")[1]
 
-      const getImage = async () => {
-          const image = $('.image')
+    const getImage = async () => {
+      const image = $('.image')
 
-          const imageSrc = image.map((index, element) => {
-              const src = $(element).attr('src')
-              if (src !== undefined && src.includes("vehicles")) {
-                  return src
-              }
-          }).get()
+      const imageSrc = image.map((index, element) => {
+        const src = $(element).attr('src')
+        if (src !== undefined && src.includes("vehicles")) {
+          return src
+        }
+      }).get()
 
-          const imageData = await Promise.all(imageSrc)
+      const imageData = await Promise.all(imageSrc)
 
-          return imageData[0]
-      }
+      return imageData[0]
+    }
 
-      const gallery = []
+    const gallery = []
 
-      $('.swiper-slide').find('img').each((index, element) => {
-          gallery.push($(element).attr('src'))
-      })
+    $('.swiper-slide').find('img').each((index, element) => {
+      gallery.push($(element).attr('src'))
+    })
 
-      const imageData = await getImage() !== undefined ? await getImage() : null
+    let imageData = await getImage() !== undefined ? await getImage() : null
 
-      const category = link.split("/")[3]
+    if(imageData === null && gallery.length > 0) {
+      imageData = gallery[0]
+    }
 
-      const bikeObj = {
-          bikeName,
-          bikeSlogan,
-          bikeDesc,
-          mainYear,
-          priceInfo: {
-              price,
-              oldPrice: null,
-              currency: "EUR"
-          },
-          image: imageData,
-          gallery: gallery,
-          category: category,
-          info: []
-      }
+    const category = link.split("/")[3]
 
-      bikesInfo[tableName][bikeName] = bikeObj
+    const bikeObj = {
+      bikeName,
+      bikeSlogan,
+      bikeDesc,
+      mainYear,
+      priceInfo: {
+        price,
+        oldPrice: null,
+        currency: "EUR"
+      },
+      image: imageData,
+      gallery: gallery,
+      category: category,
+      info: []
+    }
 
-      mainWindow.webContents.send('bike-scraped', bikeName)
-      console.log(`${bikeName} scraped`);
+    bikesInfo[tableName][bikeName] = bikeObj
+
+    mainWindow.webContents.send('bike-scraped', bikeName)
+    console.log(`${bikeName} scraped`);
   }
 
   browser.close().then(() => console.log(`${tableName} scraped`))
@@ -2639,9 +2689,9 @@ const getInfoMotoguzzi = async function (url, tableName) {
 
 const motoguzziBikes = [
   {
-      url: 'https://www.motoguzzi.com/us_EN/models/',
-      type: 'motocicleta',
-      tableName: 'motoguzzi',
+    url: 'https://www.motoguzzi.com/us_EN/models/',
+    type: 'motocicleta',
+    tableName: 'motoguzzi',
   }
 ]
 
@@ -3027,7 +3077,8 @@ const dbQuery = async (bikesInfo, type, tableName, connection) => {
                 vehicle_type text,
                 omologare text,
                 colors VARCHAR(255),
-                display_model boolean
+                display_model boolean,
+                colors_display VARCHAR(255)
             )`
 
     try {
