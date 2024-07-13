@@ -37,7 +37,7 @@ export const useAppStore = defineStore('app', {
         },
         async scrapeSpecific(scrapeId) {
             const result = await window.electronAPI.scrapeSpecific(scrapeId)
-            return await result  
+            return await result
         },
         async getServiceInfo() {
             const result = await window.electronAPI.getServiceInfo()
@@ -84,6 +84,10 @@ export const useAppStore = defineStore('app', {
             updateBike.omologare = [...new Set(omologare)]
             updateBike.colors_display = JSON.stringify(updateBike.colors_display).replace('"{', '{').replace('}"', '}').replace(/\\"/g, '"')
             window.electronAPI.updateBike(updateBike, tableName)
+        },
+        async deleteBike(id, tableName) {
+            const response = await window.electronAPI.deleteBike({ id, tableName })
+            return response
         },
         async updateTable(tableName) {
             const response = await window.electronAPI.updateTable(tableName)

@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     connectToDatabase: (data) => ipcRenderer.invoke('connect-to-database', data),
     getInfo: () => ipcRenderer.invoke('get-info'),
     updateBike: (bike, tableName) => ipcRenderer.invoke('update-bike', { bike, tableName }),
+    deleteBike: (bikeID) => ipcRenderer.invoke('delete-bike', bikeID),
     generateXLS: () => ipcRenderer.invoke('generate-xls'),
     uploadTable: () => ipcRenderer.invoke('upload-table'),
     saveNewTable: (data) => ipcRenderer.invoke('save-new-table', data),

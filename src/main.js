@@ -367,6 +367,26 @@ ipcMain.handle('update-bike', async (event, data) => {
   }
 });
 
+ipcMain.handle('delete-bike', async (event, data) => {
+  const connection = await dynamicPool.connect();
+  const { id, tableName } = data;
+  const deleteQuery = {
+    text: `DELETE FROM public."${tableName}" WHERE id = $1`,
+    values: [id],
+  };
+  try {
+    await connection.query(deleteQuery);
+    console.log("Deleted bike");
+    return {
+      success: true
+    }
+  } catch (error) {
+    console.log(error);
+  } finally {
+    connection.release();
+  }
+});
+
 ipcMain.handle('download-xls', async (event, data) => {
   const connection = await dynamicPool.connect();
   const query = `SELECT * FROM ${data}`
@@ -494,11 +514,15 @@ ipcMain.handle('update-table', async (event, data) => {
 
       tableQuery.values = [...row]
 
-      if(tableQuery.values[22] !== undefined){
+      if (tableQuery.values.length < 25) {
+        tableQuery.values.push('null')
+      }
+
+      if (tableQuery.values[22] !== undefined) {
         tableQuery.values[22] = tableQuery.values[22].replace(/\'/g, '"')
       }
-      
-      if(tableQuery.values[24] !== undefined){
+
+      if (tableQuery.values[24] !== undefined) {
         tableQuery.values[24] = tableQuery.values[24].replace(/\'/g, '"')
       }
 
@@ -2656,7 +2680,7 @@ const getInfoMotoguzzi = async function (url, tableName) {
 
     let imageData = await getImage() !== undefined ? await getImage() : null
 
-    if(imageData === null && gallery.length > 0) {
+    if (imageData === null && gallery.length > 0) {
       imageData = gallery[0]
     }
 

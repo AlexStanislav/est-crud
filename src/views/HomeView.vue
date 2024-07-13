@@ -220,6 +220,11 @@
                 severity="warning"
                 @click="editBike(slotProps.data)"
               />
+              <Button
+                icon="pi pi-trash"
+                severity="danger"
+                @click="deleteBike(slotProps.data)"
+              />
             </div>
           </template>
         </Column>
@@ -516,7 +521,7 @@
             <Dialog
               class="color-help"
               v-model:visible="showColorsHelp"
-              :style="{ width: '40vw', height: '40vh' }"
+              :style="{ width: '40vw' }"
             >
               <p>
                 Culorile se salveaza asa: <br />
@@ -525,7 +530,7 @@
               <p>
                 Valoarea culorii este sub forma hexazecimala pentru a o putea
                 afisa pe site <br />
-                Valorile HEX variaza de la 000000 la FFFFFF si se imparte in 3
+                Valorile HEX variaza de la 000000 la FFFFFF (0-9/A-F) si se imparte in 3
                 pentru fiecare valoare de RGB <br />
                 Culorile intunecate au valorea mai mica, iar cele mai luminoase
                 au valoare mai mare <br />
@@ -534,7 +539,17 @@
               <p>
                 Se pot introduce mai multe valori HEX pentru o singura culoare
                 <br />
-                Eg: yellow-black => ffff00,000000
+                Eg: yellow black => ffff00,000000
+              </p>
+              <p>
+                Pentru a putea avea informatii diferite pentru fiecare culoare (eg: Royal Enfield are pret diferit in functie de culoare) se poate duplica randul ce contine vehiculul respectiv.<br />
+                In acest rand duplicat se pot modifica informatiile dupa plac. <br /><br />
+                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul</b> <br />
+                Pentru ID se poate modifica doar ultima cifra.
+              </p>
+              <p>
+                Pentru un nume al culorii compus din mai multe culori (yellow-black) nu se foloseste niciodata cratiama (-), cel mai bine se foloseste spatiu ( ). <br />
+                Daca numele compus contine cratima este posibil ca la click pe culoare respectiva sa nu se afiseze informatiile din randul dublat.
               </p>
             </Dialog>
           </h3>
@@ -1251,6 +1266,27 @@ const editBike = (bike) => {
   } 
 
   getBikeOmologare(currentBike.value);
+};
+
+const deleteBike = async (bike) => {
+  const result = await appStore.deleteBike(bike.id, currentBrand.value);
+  console.log(result);
+  if (result.success) {
+    toast.add({
+      severity: "success",
+      summary: "Success",
+      detail: `Model sters`,
+      life: 3000,
+    });
+    refreshBikes();
+  } else {
+    toast.add({
+      severity: "error",
+      summary: "Error",
+      detail: `Modelul nu a fost sters`,
+      life: 3000,
+    });
+  }
 };
 
 const handleColorModelChange = (event, index) => {
