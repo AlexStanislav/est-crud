@@ -984,9 +984,11 @@ const editBike = (bike) => {
     currentBike.value.capacitate =
       Math.round(parseInt(currentBike.value.capacitate) / 25) * 25;
   }
-
+  
   if((bike.colors_display !== undefined || bike.colors_display !== null) && typeof bike.colors_display === 'string'){
     let colorsDisplay = JSON.parse(bike.colors_display.replace(/\'/g, '"'))
+
+
     const colorsArray = transformObjectToArray(colorsDisplay)
     colorsArray.forEach(colorObj => {
       if (!Array.isArray(colorObj.shades)) {
@@ -995,6 +997,8 @@ const editBike = (bike) => {
       colorObj.shades = colorObj.shades.map(shade => shade.includes('#') ? shade : '#' + shade);
     });
     currentColors.value = colorsArray
+  } else {
+    currentColors.value = [];
   }
 
   omologareOptions.value = ["t3b", "l7e"];
