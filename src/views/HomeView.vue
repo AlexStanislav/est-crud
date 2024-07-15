@@ -394,9 +394,19 @@
               </p>
               <p>
                 Pentru a putea avea informatii diferite pentru fiecare culoare (eg: Royal Enfield are pret diferit in
-                functie de culoare) se poate duplica randul ce contine vehiculul respectiv.<br />
+                functie de culoare) se poate duplica randul ce contine vehiculul respectiv in xls-ul descarcat.<br />
                 In acest rand duplicat se pot modifica informatiile dupa plac. <br /><br />
-                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul</b>
+                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul pentru vehiculele fara culoare, dar identice in afara de culoare pentru cele care au</b>
+                <br>
+                <ul>
+                  Pentru cele care au culoare si vrem sa putem alege culoare de pe site:  
+                  <li>
+                    Eg: <u><i>sidecar-urban-520-cream</i></u> si <u><i>sidecar-urban-520-silver</i></u> trebuie sa fie numele
+                  </li>
+                  <br>
+                  Restul care nu au culoare
+                  <li>sm-500-R, sm-500-T, sm-125, sm-120 etc.</li>
+                </ul>
                 <br />
                 Pentru ID se poate modifica doar ultima cifra.
               </p>
@@ -404,7 +414,7 @@
                 Pentru un nume al culorii compus din mai multe culori (yellow-black) nu se foloseste niciodata cratiama
                 (-), cel mai bine se foloseste spatiu ( ). <br />
                 Daca numele compus contine cratima este posibil ca la click pe culoare respectiva sa nu se afiseze
-                informatiile din randul dublat.
+                informatiile.
               </p>
             </Dialog>
           </h3>
