@@ -4,38 +4,18 @@
       <h2>
         Tabele
         <div class="actions-container">
-          <Button
-            icon="pi pi-table"
-            severity="success"
-            @click="showNewTableDialog = true"
-            title="Incarcare/Descarcare XLS"
-          ></Button>
-          <Button
-            icon="pi pi-download"
-            severity="default"
-            title="Descarca informatii modele"
-            @click="showScrapeDialog = true"
-          ></Button>
-          <Button
-            icon="pi pi-list"
-            severity="info"
-            title="Vezi progress descarcare"
-            @click="appStore.toggleScrapeLog(true)"
-          ></Button>
-          <Button
-            icon="pi pi-refresh"
-            severity="info"
-            @click="refreshBikes()"
-            title="Reincarca informatii tabele"
-          ></Button>
+          <Button icon="pi pi-table" severity="success" @click="showNewTableDialog = true"
+            title="Incarcare/Descarcare XLS"></Button>
+          <Button icon="pi pi-download" severity="default" title="Descarca informatii modele"
+            @click="showScrapeDialog = true"></Button>
+          <Button icon="pi pi-list" severity="info" title="Vezi progress descarcare"
+            @click="appStore.toggleScrapeLog(true)"></Button>
+          <Button icon="pi pi-refresh" severity="info" @click="refreshBikes()"
+            title="Reincarca informatii tabele"></Button>
         </div>
       </h2>
       <ul>
-        <li
-          v-for="brand in bikeBrands"
-          :key="brand"
-          @click="showCurrentBikes(brand)"
-        >
+        <li v-for="brand in bikeBrands" :key="brand" @click="showCurrentBikes(brand)">
           <div>
             {{ brand }}
           </div>
@@ -52,14 +32,8 @@
         <h1>Se incarca...</h1>
         <ProgressSpinner />
       </div>
-      <DataTable
-        v-else
-        v-model:filters="globalFilters"
-        removableSort
-        :value="currentBikes"
-        size="small"
-        filterDisplay="menu"
-        :globalFilterFields="[
+      <DataTable v-else v-model:filters="globalFilters" removableSort :value="currentBikes" size="small"
+        filterDisplay="menu" :globalFilterFields="[
           'bike_name',
           'price',
           'old_price',
@@ -67,44 +41,25 @@
           'category',
           'is_gallery',
           'main_year',
-        ]"
-      >
+        ]">
         <template #header>
-          <InputText
-            v-model="globalFilters['global'].value"
-            placeholder="Cauta"
-          />
+          <InputText v-model="globalFilters['global'].value" placeholder="Cauta" />
           <label>Coloane: &nbsp;</label>
-          <MultiSelect
-            :modelValue="selectedColumns"
-            :options="columns"
-            optionLabel="header"
-            @update:modelValue="onColumnToggle"
-            display="chip"
-            placeholder="Selecteaza coloane"
-          />
+          <MultiSelect :modelValue="selectedColumns" :options="columns" optionLabel="header"
+            @update:modelValue="onColumnToggle" display="chip" placeholder="Selecteaza coloane" />
         </template>
         <Column sortable header="ID">
           <template #body="slotProps">
             {{ slotProps.index + 1 }}
           </template>
         </Column>
-        <Column
-          v-for="col of selectedColumns"
-          :key="col.field"
-          :field="col.field"
-          :header="col.header"
-          :sortable="col.sortable"
-        >
+        <Column v-for="col of selectedColumns" :key="col.field" :field="col.field" :header="col.header"
+          :sortable="col.sortable">
           <template #body="slotProps">
             {{ parseColumnData(slotProps.data, col) }}
           </template>
           <template #filter="{ filterModel }">
-            <InputText
-              type="text"
-              v-model="filterModel.value"
-              class="p-column-filter"
-            />
+            <InputText type="text" v-model="filterModel.value" class="p-column-filter" />
           </template>
         </Column>
         <!-- <Column sortable field="bike_name" header="Nume">
@@ -215,27 +170,15 @@
         <Column header="Actiuni">
           <template #body="slotProps">
             <div class="table-actions">
-              <Button
-                icon="pi pi-pencil"
-                severity="warning"
-                @click="editBike(slotProps.data)"
-              />
-              <Button
-                icon="pi pi-trash"
-                severity="danger"
-                @click="deleteBike(slotProps.data)"
-              />
+              <Button icon="pi pi-pencil" severity="warning" @click="editBike(slotProps.data)" />
+              <Button icon="pi pi-trash" severity="danger" @click="deleteBike(slotProps.data)" />
             </div>
           </template>
         </Column>
       </DataTable>
     </main>
-    <Dialog
-      v-model:visible="showDialog"
-      modal
-      :header="currentBike.bike_name"
-      style="min-width: 100vw; min-height: 100vh"
-    >
+    <Dialog v-model:visible="showDialog" modal :header="currentBike.bike_name"
+      style="min-width: 100vw; min-height: 100vh">
       <section class="left-info">
         <h2>Detalii</h2>
         <div class="form-row">
@@ -244,23 +187,19 @@
             <label>Nume</label>
           </FloatLabel>
           <FloatLabel>
-            <Dropdown
-              v-model="currentBike.brand"
-              :options="brandOptions[currentBike['vehicle_type']]"
-              placeholder="Marca"
-              class="bike-column"
-            />
+            <Dropdown v-model="currentBike.brand" :options="brandOptions[currentBike['vehicle_type']]"
+              placeholder="Marca" class="bike-column" />
             <label>Marca</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <span class="price-display" v-if="currentBike.price !== null">
-            <FloatLabel
-              v-for="(price, index) in currentBike.price"
-              :key="index"
-            >
+            <FloatLabel class="price-label" v-for="(price, index) in currentBike.price" :key="index">
               <InputText type="text" v-model="currentBike.price[index]" />
               <label v-if="index === 0">Pret</label>
+              <Button class="add-price-button" icon="pi pi-plus" severity="success" @click="addPrice()" />
+              <Button v-if="currentBike.price.length > 1" class="delete-price-button" icon="pi pi-minus"
+                severity="danger" @click="deletePrice(index)" />
             </FloatLabel>
           </span>
           <span class="price-display" v-else>
@@ -270,10 +209,7 @@
             </FloatLabel>
           </span>
           <span class="price-display" v-if="currentBike.old_price !== null">
-            <FloatLabel
-              v-for="(price, index) in currentBike.old_price"
-              :key="index"
-            >
+            <FloatLabel v-for="(price, index) in currentBike.old_price" :key="index">
               <InputText type="text" v-model="currentBike.old_price[index]" />
               <label v-if="index === 0">Pret vechi</label>
             </FloatLabel>
@@ -287,60 +223,32 @@
         </div>
         <div class="form-row">
           <FloatLabel>
-            <Dropdown
-              v-model="currentBike.category"
-              :options="bikeCategories[currentBike['vehicle_type']]"
-              class="bike-column"
-              placeholder="Categorie"
-            />
+            <Dropdown v-model="currentBike.category" :options="bikeCategories[currentBike['vehicle_type']]"
+              class="bike-column" placeholder="Categorie" />
             <label>Categorie</label>
           </FloatLabel>
           <FloatLabel>
-            <Dropdown
-              v-model="currentBike.main_year"
-              :options="yearOptions"
-              class="bike-column"
-              placeholder="An"
-              optionLabel="name"
-              optionValue="value"
-            />
+            <Dropdown v-model="currentBike.main_year" :options="yearOptions" class="bike-column" placeholder="An"
+              optionLabel="name" optionValue="value" />
             <label>An</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <Dropdown
-              v-model="currentBike.rabla"
-              :options="rablaOptions"
-              class="bike-column"
-              placeholder="Eligibila Rabla"
-              optionLabel="name"
-              optionValue="value"
-            />
+            <Dropdown v-model="currentBike.rabla" :options="rablaOptions" class="bike-column"
+              placeholder="Eligibila Rabla" optionLabel="name" optionValue="value" />
             <label>Rabla</label>
           </FloatLabel>
           <FloatLabel>
-            <MultiSelect
-              v-model="permisValue"
-              :options="permisOptions"
-              optionLabel="name"
-              optionValue="value"
-              placeholder="Permis"
-              display="chip"
-              class="bike-column"
-              @change="permisChange"
-            ></MultiSelect>
+            <MultiSelect v-model="permisValue" :options="permisOptions" optionLabel="name" optionValue="value"
+              placeholder="Permis" display="chip" class="bike-column" @change="permisChange"></MultiSelect>
             <label>Permis</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <Dropdown
-              v-model="currentBike.capacitate"
-              :options="capacityOptions()"
-              class="bike-column"
-              placeholder="Capacitate"
-            />
+            <Dropdown v-model="currentBike.capacitate" :options="capacityOptions()" class="bike-column"
+              placeholder="Capacitate" />
             <label>Capacitate</label>
           </FloatLabel>
           <FloatLabel>
@@ -360,67 +268,37 @@
         </div>
         <div class="form-row">
           <FloatLabel>
-            <Dropdown
-              v-model="currentBike.vehicle_type"
-              :options="[
-                { name: 'Motociclete', value: 'bikes' },
-                { name: 'Scutere', value: 'scooters' },
-                { name: 'Atv', value: 'atv' },
-                { name: 'SSV', value: 'ssv' },
-              ]"
-              placeholder="Tip vehicul"
-              optionLabel="name"
-              optionValue="value"
-              class="bike-column"
-            />
+            <Dropdown v-model="currentBike.vehicle_type" :options="[
+              { name: 'Motociclete', value: 'bikes' },
+              { name: 'Scutere', value: 'scooters' },
+              { name: 'Atv', value: 'atv' },
+              { name: 'SSV', value: 'ssv' },
+            ]" placeholder="Tip vehicul" optionLabel="name" optionValue="value" class="bike-column" />
             <label>Tip vehicul</label>
           </FloatLabel>
         </div>
         <div class="form-row">
           <FloatLabel>
-            <MultiSelect
-              v-model="omologareValue"
-              :options="omologareOptions"
-              placeholder="Omlogare"
-              display="chip"
-              class="bike-column"
-              @change="omologareChange"
-            ></MultiSelect>
+            <MultiSelect v-model="omologareValue" :options="omologareOptions" placeholder="Omlogare" display="chip"
+              class="bike-column" @change="omologareChange"></MultiSelect>
             <label>Omologare</label>
           </FloatLabel>
         </div>
         <div class="form-row form-toggles">
           <div class="form-column">
             <label>Exista in slideshow?</label>
-            <ToggleButton
-              v-model="currentBike.is_gallery"
-              onLabel="Da"
-              offLabel="Nu"
-            />
+            <ToggleButton v-model="currentBike.is_gallery" onLabel="Da" offLabel="Nu" />
           </div>
           <div class="form-column">
             <label>Apare pe site?</label>
-            <ToggleButton
-              v-model="currentBike.display_model"
-              onLabel="Da"
-              offLabel="Nu"
-            />
+            <ToggleButton v-model="currentBike.display_model" onLabel="Da" offLabel="Nu" />
           </div>
-          <Button
-            severity="warning"
-            icon="pi pi-pencil"
-            label="Editeaza culori"
-            @click="showEditColorsDialog = true"
-          />
+          <Button severity="warning" icon="pi pi-pencil" label="Editeaza culori" @click="showEditColorsDialog = true" />
         </div>
         <div class="form-row main-image">
           <h2>Imagine Slideshow</h2>
           <div class="form-column">
-            <InputText
-              type="text"
-              v-model="currentBike.gallery_image"
-              title="Imagine principala"
-            />
+            <InputText type="text" v-model="currentBike.gallery_image" title="Imagine principala" />
             <Image class="preview-image" preview>
               <template #indicatoricon>
                 <i class="pi pi-eye"></i>
@@ -437,11 +315,7 @@
         <div class="form-row main-image">
           <h2>Imagine principala</h2>
           <div class="form-column">
-            <InputText
-              type="text"
-              v-model="currentBike.image"
-              title="Imagine principala"
-            />
+            <InputText type="text" v-model="currentBike.image" title="Imagine principala" />
             <Image class="preview-image" preview>
               <template #indicatoricon>
                 <i class="pi pi-eye"></i>
@@ -468,16 +342,8 @@
               </InputGroupAddon>
               <InputText type="text" v-model="newGalleryImage" />
             </InputGroup>
-            <span
-              class="gallery-row"
-              v-for="image in currentBike.gallery"
-              :key="image"
-            >
-              <InputText
-                type="text"
-                :value="image.replace('$http', 'http')"
-                readonly
-              />
+            <span class="gallery-row" v-for="image in currentBike.gallery" :key="image">
+              <InputText type="text" :value="image.replace('$http', 'http').replace(/\'/g, '')" readonly />
               <Image class="preview-image" preview>
                 <template #indicatoricon>
                   <i class="pi pi-eye"></i>
@@ -486,13 +352,10 @@
                   <i class="pi pi-eye"></i>
                 </template>
                 <template #preview>
-                  <img :src="image.replace('$http', 'http')" alt="preview" />
+                  <img :src="image.replace('$http', 'http').replace(/\'/g, '')" alt="preview" />
                 </template>
               </Image>
-              <i
-                class="pi pi-times remove-gallery-image"
-                @click="confirmDelete($event, image)"
-              ></i>
+              <i class="pi pi-times remove-gallery-image" @click="confirmDelete($event, image)"></i>
             </span>
           </div>
         </div>
@@ -504,25 +367,13 @@
       <template #footer>
         <Button label="Salveaza" severity="success" @click="saveChanges()" />
       </template>
-      <Dialog
-        v-model:visible="showEditColorsDialog"
-        modal
-        style="max-width: 55vw; height: fit-content"
-        class="edit-colors-dialog"
-      >
+      <Dialog v-model:visible="showEditColorsDialog" modal style="max-width: 55vw; height: fit-content"
+        class="edit-colors-dialog">
         <template #header>
           <h3>
             Editeaza Culori
-            <Button
-              icon="pi pi-question-circle"
-              class="color-help-button"
-              @click="showColorsHelp = true"
-            />
-            <Dialog
-              class="color-help"
-              v-model:visible="showColorsHelp"
-              :style="{ width: '40vw' }"
-            >
+            <Button icon="pi pi-question-circle" class="color-help-button" @click="showColorsHelp = true" />
+            <Dialog class="color-help" v-model:visible="showColorsHelp" :style="{ width: '40vw' }">
               <p>
                 Culorile se salveaza asa: <br />
                 Nume Culoare => Valoare Culoare
@@ -542,88 +393,44 @@
                 Eg: yellow black => ffff00,000000
               </p>
               <p>
-                Pentru a putea avea informatii diferite pentru fiecare culoare (eg: Royal Enfield are pret diferit in functie de culoare) se poate duplica randul ce contine vehiculul respectiv.<br />
+                Pentru a putea avea informatii diferite pentru fiecare culoare (eg: Royal Enfield are pret diferit in
+                functie de culoare) se poate duplica randul ce contine vehiculul respectiv.<br />
                 In acest rand duplicat se pot modifica informatiile dupa plac. <br /><br />
-                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul</b> <br />
+                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul</b>
+                <br />
                 Pentru ID se poate modifica doar ultima cifra.
               </p>
               <p>
-                Pentru un nume al culorii compus din mai multe culori (yellow-black) nu se foloseste niciodata cratiama (-), cel mai bine se foloseste spatiu ( ). <br />
-                Daca numele compus contine cratima este posibil ca la click pe culoare respectiva sa nu se afiseze informatiile din randul dublat.
+                Pentru un nume al culorii compus din mai multe culori (yellow-black) nu se foloseste niciodata cratiama
+                (-), cel mai bine se foloseste spatiu ( ). <br />
+                Daca numele compus contine cratima este posibil ca la click pe culoare respectiva sa nu se afiseze
+                informatiile din randul dublat.
               </p>
             </Dialog>
           </h3>
         </template>
-        <Button
-          severity="info"
-          icon="pi pi-plus"
-          @click="addColor()"
-          title="Adauga culoare noua"
-        />
+
+        <Button class="add-color" severity="info" icon="pi pi-plus" @click="addColor()" title="Adauga culoare noua" />
         <ul class="edit-colors-list">
-          <li v-for="(color, mainIndex) in currentBike.colors" :key="mainIndex">
-            <div class="edit-color-name">
-              <span class="edit-color-label">Nume culoare: </span
-              ><InputText
-                class="edit-color-input"
-                v-model="currentBike.colors[mainIndex]"
-                :readonly="canChangeColorName"
-              />
-              <Button
-                v-if="canChangeColorName"
-                severity="warning"
-                icon="pi pi-pencil"
-                @click="editColorName(mainIndex)"
-                title="Editeaza nume culoare"
-              />
-              <Button
-                v-else
-                severity="success"
-                icon="pi pi-check"
-                @click="saveColorName(currentBike.colors[mainIndex], mainIndex)"
-              />
-            </div>
-            <div class="color-picker-container">
-              <span class="edit-color-label">Culoare: </span>
-              <span
-                class="color-picker-wrapper"
-                v-if="Array.isArray(colorModel[color])"
-              >
-                <span
-                  v-for="(element, index) in colorModel[color]"
-                  :key="index"
-                >
-                  <ColorPicker
-                    v-model="colorModel[color][index]"
-                    format="hex"
-                  />
-                </span>
+
+          <li v-for="(color, mainIndex) in currentColors" :key="mainIndex">
+            <InputText v-model="color.name" placeholder="Nume Culoare"/>
+
+            <div class="color-shades">
+              <span v-for="(shade, index) in color.shades" :key="index">
+                <input type="color" class="edit-color-input" v-model="color.shades[index]" />
               </span>
-              <span class="color-picker-wrapper" v-else>
-                <ColorPicker v-model="colorModel[color]" format="hex" />
-              </span>
-              <Button
-                class="color-picker-button"
-                severity="info"
-                icon="pi pi-plus"
-                @click="addColorShade(mainIndex)"
-              />
+              <i class="pi pi-plus add-shade-button" @click="addShade(mainIndex)" />
+              <i v-if="color.shades.length > 1" class="pi pi-minus delete-shade-button" @click="deleteShade(mainIndex)" />
             </div>
-            <div>
-              <span class="edit-color-label">Valoare HEX: </span>
-              <InputText
-                class="edit-color-input"
-                v-model="colorModel[color]"
-                @input="handleColorModelChange($event, color)"
-              />
+
+            <div class="edit-color-buttons">
+              <Button label="Sterge" severity="danger" icon="pi pi-trash" @click="removeColor(mainIndex)" />
             </div>
-            <Button
-              severity="danger"
-              label="Sterge culoare"
-              @click="removeColor(index, color)"
-            />
           </li>
         </ul>
+
+
         <template #footer>
           <Button severity="success" label="Salveaza" @click="saveColors()" />
         </template>
@@ -636,51 +443,25 @@
       <div class="download-table">
         <h2>Descarca Tabel</h2>
         <div class="form-row">
-          <Dropdown
-            v-model="tableToDownload"
-            :options="bikeBrands"
-            placeholder="Selecteaza Tabel"
-          />
+          <Dropdown v-model="tableToDownload" :options="bikeBrands" placeholder="Selecteaza Tabel" />
         </div>
         <div class="form-row">
-          <Button
-            label="Descarca Tabel"
-            severity="info"
-            @click="downloadTable()"
-          />
+          <Button label="Descarca Tabel" severity="info" @click="downloadTable()" />
         </div>
       </div>
       <div class="update-table">
         <h2>Actualizeaza Tabel</h2>
         <div class="form-row">
-          <Dropdown
-            v-model="tableToUpdate"
-            :options="bikeBrands"
-            placeholder="Selecteaza Tabel"
-          />
+          <Dropdown v-model="tableToUpdate" :options="bikeBrands" placeholder="Selecteaza Tabel" />
         </div>
         <div class="form-row">
-          <InputText
-            type="text"
-            v-model="tableToUpdateName"
-            placeholder="Nume fisier incarcat..."
-            readonly
-          />
+          <InputText type="text" v-model="tableToUpdateName" placeholder="Nume fisier incarcat..." readonly />
         </div>
         <div class="form-row">
-          <Button
-            label="Selecteaza Fisier"
-            severity="warning"
-            icon="pi pi-file"
-            @click="uploadXLSUpdate()"
-          />
+          <Button label="Selecteaza Fisier" severity="warning" icon="pi pi-file" @click="uploadXLSUpdate()" />
         </div>
         <div class="form-row">
-          <Button
-            label="Actualizeaza Tabel"
-            severity="info"
-            @click="updateTable()"
-          />
+          <Button label="Actualizeaza Tabel" severity="info" @click="updateTable()" />
         </div>
       </div>
       <div class="upload-table">
@@ -690,73 +471,37 @@
             <InputText type="text" v-model="newTable.name" />
             <label>Nume Tabel Nou</label>
           </FloatLabel>
-          <Dropdown
-            v-model="newTable.type"
-            :options="tableTypes"
-            :option-label="'name'"
-            placeholder="Tip Tabel"
-          />
+          <Dropdown v-model="newTable.type" :options="tableTypes" :option-label="'name'" placeholder="Tip Tabel" />
         </div>
         <div class="form-row">
-          <InputText
-            type="text"
-            placeholder="Nume fisier incarcat..."
-            v-model="currentTableFilename"
-            readonly
-          />
+          <InputText type="text" placeholder="Nume fisier incarcat..." v-model="currentTableFilename" readonly />
         </div>
         <div class="form-row">
-          <Button
-            label="Selecteaza Fisier"
-            severity="warning"
-            icon="pi pi-file"
-            @click="uploadXLS()"
-          />
+          <Button label="Selecteaza Fisier" severity="warning" icon="pi pi-file" @click="uploadXLS()" />
         </div>
         <div class="form-row">
-          <Button
-            label="Incarca Tabel"
-            severity="info"
-            @click="saveNewTable()"
-          />
+          <Button label="Incarca Tabel" severity="info" @click="saveNewTable()" />
         </div>
       </div>
     </Dialog>
-    <Dialog
-      v-model:visible="showTableEditDialog"
-      modal
-      class="table-edit-dialog"
-    >
+    <Dialog v-model:visible="showTableEditDialog" modal class="table-edit-dialog">
       <template #header>
         <h2>Editeaza Coloana tabel</h2>
       </template>
       <div class="form-row">
-        <Dropdown
-          v-model="currentTable.brand"
-          :options="brandOptions[currentTable['name'].split('_')[1]]"
-          class="bike-column"
-          placeholder="Marca"
-        />
+        <Dropdown v-model="currentTable.brand" :options="brandOptions[currentTable['name'].split('_')[1]]"
+          class="bike-column" placeholder="Marca" />
         <FloatLabel>
           <InputText type="text" v-model="currentTable.vehicle_type" />
           <label>Tip vehicul {{ currentTable.name }}</label>
         </FloatLabel>
       </div>
       <div class="form-row">
-        <Button
-          severity="success"
-          icon="pi pi-save"
-          label="Salveaza"
-          @click="saveTableChanges()"
-        />
+        <Button severity="success" icon="pi pi-save" label="Salveaza" @click="saveTableChanges()" />
       </div>
     </Dialog>
-    <Dialog
-      v-model:visible="appStore.showScrapeLog"
-      modal
-      class="scrape-log-dialog"
-      style="min-width: 100vw; min-height: 100vh"
-    >
+    <Dialog v-model:visible="appStore.showScrapeLog" modal class="scrape-log-dialog"
+      style="min-width: 100vw; min-height: 100vh">
       <template #header>
         <h1>Scrape Log</h1>
       </template>
@@ -764,29 +509,14 @@
         <pre>{{ appStore.scrapeLog }}</pre>
       </div>
     </Dialog>
-    <Dialog
-      v-model:visible="showScrapeDialog"
-      modal
-      class="scrape-dialog"
-      header="Descarca informatii vehicule"
-    >
-      <Button
-        icon="pi pi-download"
-        :label="`Descarca ${scraper
-          .replace('scrape-', '')
-          .replace('-snowmobiles', ' snowmobile')
-          .replace('-bikes', ' motociclete')
-          .replace('-atv', ' atv')}`"
-        v-for="scraper of scrapeList"
-        :key="scraper"
-        @click="scrapeSpecific(scraper)"
-      >
+    <Dialog v-model:visible="showScrapeDialog" modal class="scrape-dialog" header="Descarca informatii vehicule">
+      <Button icon="pi pi-download" :label="`Descarca ${scraper
+        .replace('scrape-', '')
+        .replace('-snowmobiles', ' snowmobile')
+        .replace('-bikes', ' motociclete')
+        .replace('-atv', ' atv')}`" v-for="scraper of scrapeList" :key="scraper" @click="scrapeSpecific(scraper)">
       </Button>
-      <Button
-        icon="pi pi-download"
-        label="Descarca toate"
-        @click="scrapeInfo()"
-      ></Button>
+      <Button icon="pi pi-download" label="Descarca toate" @click="scrapeInfo()"></Button>
     </Dialog>
     <ConfirmPopup></ConfirmPopup>
     <Toast></Toast>
@@ -970,6 +700,16 @@ const tableExample = ref([
   "vehicle_type",
 ]);
 
+const addPrice = () => {
+  currentBike.value.price.push(0);
+  currentBike.value.old_price.push(null);
+}
+
+const deletePrice = (index) => {
+  currentBike.value.price.splice(index, 1);
+  currentBike.value.old_price.splice(index, 1);
+}
+
 const displayPrice = (price) => {
   if (Array.isArray(price)) {
     if (price[0] !== null) {
@@ -1007,8 +747,10 @@ const scrapeSpecific = async (scrapeId) => {
 
 const getBikeOmologare = (bike) => {
   if (bike.omologare !== null && bike.omologare !== "undefined") {
-    const omologareString = bike.omologare.replace("{", "[").replace("}", "]");
-    omologareValue.value = JSON.parse(omologareString);
+    const omologareString = bike.omologare.replace("{", "[").replace("}", "]").replace(/\'/g, '"');
+    if(omologareString !== "[]" && omologareString !== "[NULL]"){
+      omologareValue.value = JSON.parse(omologareString);
+    }
   }
 };
 
@@ -1120,7 +862,6 @@ const downloadTable = async () => {
 const saveNewTable = async () => {
   const { name, type } = newTable.value;
   const response = await appStore.saveNewTable({ name, type: type.value });
-  console.log(response);
 };
 
 const uploadXLSUpdate = async () => {
@@ -1239,19 +980,21 @@ const editBike = (bike) => {
   permisValue.value = permisArr;
   currentBike.value.colors_display = bike.colors_display;
 
-  if (currentBike.value.colors_display !== null) {
-    console.log(currentBike.value.colors_display);
-    colorModel.value = JSON.parse(currentBike.value.colors_display);
-  } else {
-    colorModel.value = {};
-  }
-
   if (currentBike.value.capacitate) {
     currentBike.value.capacitate =
       Math.round(parseInt(currentBike.value.capacitate) / 25) * 25;
   }
-  if (bike.colors === null) {
-    bike.colors = [];
+
+  if((bike.colors_display !== undefined || bike.colors_display !== null) && typeof bike.colors_display === 'string'){
+    let colorsDisplay = JSON.parse(bike.colors_display.replace(/\'/g, '"'))
+    const colorsArray = transformObjectToArray(colorsDisplay)
+    colorsArray.forEach(colorObj => {
+      if (!Array.isArray(colorObj.shades)) {
+        colorObj.shades = [colorObj.shades];
+      }
+      colorObj.shades = colorObj.shades.map(shade => shade.includes('#') ? shade : '#' + shade);
+    });
+    currentColors.value = colorsArray
   }
 
   omologareOptions.value = ["t3b", "l7e"];
@@ -1259,18 +1002,19 @@ const editBike = (bike) => {
   if (Array.isArray(currentBike.value.price)) {
     let priceArr = []
     currentBike.value.price.forEach((price) => {
-      price = price.replace(/[.,\s]/g, "");
+      if (typeof price === "string") {
+        price = price.replace(/[.,\s]/g, "");
+      }
       priceArr.push(price)
     });
     currentBike.value.price = priceArr
-  } 
+  }
 
   getBikeOmologare(currentBike.value);
 };
 
 const deleteBike = async (bike) => {
   const result = await appStore.deleteBike(bike.id, currentBrand.value);
-  console.log(result);
   if (result.success) {
     toast.add({
       severity: "success",
@@ -1289,89 +1033,52 @@ const deleteBike = async (bike) => {
   }
 };
 
-const handleColorModelChange = (event, index) => {
-  if (typeof colorModel.value[index] === "string") {
-    if (colorModel.value[index].includes(",")) {
-      colorModel.value[index] = colorModel.value[index].split(",");
-    }
-  }
-};
 const currentColorName = ref("");
-const canChangeColorName = ref(true);
-const editColorName = (index) => {
-  canChangeColorName.value = !canChangeColorName.value;
-  currentColorName.value = currentBike.value.colors[index];
-};
-
-const saveColorName = (colorName, index) => {
-  const colorDisplay = JSON.parse(currentBike.value.colors_display);
-  const colorDisplayValue = colorDisplay[currentColorName.value];
-  colorModel.value[colorName] = colorDisplayValue;
-  colorDisplay[colorName] = colorDisplayValue;
-
-  delete colorDisplay[currentColorName.value];
-  delete colorModel.value[currentColorName.value];
-
-  currentBike.value.colors_display = JSON.stringify(colorDisplay);
-  canChangeColorName.value = !canChangeColorName.value;
-};
-
-const addColorShade = (index) => {
-  const color = currentBike.value.colors[index];
-  if (color === "") {
-    toast.add({
-      severity: "error",
-      summary: "Error",
-      detail: `Introdu un nume pentru culoare!`,
-      life: 3000,
-    });
-  }
-
-  if (colorModel.value[color] === undefined) {
-    toast.add({
-      severity: "error",
-      summary: "Error",
-      detail: `Introdu sau alege o valoare HEX pentru culoare!`,
-      life: 3000,
-    });
-  } else {
-    const colorArr = [];
-    colorArr.push(colorModel.value[color]);
-    colorArr.push("");
-    colorModel.value[color] = colorArr;
-    console.log(colorModel.value);
-    console.log(currentBike.value.colors);
-    console.log(currentBike.value.colors_display);
-  }
-};
+const currentColors = ref([])
+const currentColorShades = ref(["#ff0000"]);
 
 const addColor = () => {
-  if (currentBike.value.colors === null) {
-    currentBike.value.colors = [""];
-  } else {
-    currentBike.value.colors.push("");
-  }
+  currentColors.value.push({
+    name: "",
+    shades: ["#ff0000"],
+  });
+}
+
+
+const removeColor = (index) => {
+  currentColors.value.splice(index, 1);
 };
 
-const removeColor = (index, color) => {
-  currentBike.value.colors.splice(index, 1);
-  if (currentBike.value.colors.length === 0) {
-    currentBike.value.colors = null;
-  }
-  const colors_display = JSON.parse(currentBike.value.colors_display);
-  delete colors_display[color];
-  if (Object.keys(colors_display).length === 0) {
-    colorModel.value = null;
-  } else {
-    colorModel.value = colors_display;
-  }
+const addShade = (index) => {
+  let currentColorShades = currentColors.value[index].shades;
+  currentColorShades.push("#ff0000");
 };
+
+const deleteShade = (index) => {
+  let currentColorShades = currentColors.value[index].shades;
+  currentColorShades.pop();
+}
+
+function transformArrayToObject(arr) {
+    return arr.reduce((acc, obj) => {
+        acc[obj.name] = obj.shades;
+        return acc;
+    }, {});
+}
+
+function transformObjectToArray(obj) {
+    return Object.entries(obj).map(([name, shades]) => ({ name, shades }));
+}
 
 const saveColors = () => {
-  currentBike.value.colors_display = colorModel.value;
+  let finalColors = JSON.stringify(transformArrayToObject(currentColors.value))
+  currentBike.value.colors_display = finalColors.replace(/"/g, "'");
+
+  currentBike.value.colors = Object.keys(transformArrayToObject(currentColors.value));
+
   showEditColorsDialog.value = false;
-  console.log(currentBike.value.colors_display);
-};
+}
+
 
 const showCurrentBikes = (brand) => {
   localStorage.setItem("currentBrand", brand);
@@ -1460,6 +1167,7 @@ watch(showDialog, () => {
 .table-actions {
   display: flex;
   gap: 1rem;
+
   .p-button {
     width: 3rem;
   }
@@ -1491,6 +1199,7 @@ nav {
         align-items: center;
         flex: 1;
       }
+
       .p-button {
         flex: 0.2;
       }
@@ -1559,21 +1268,26 @@ main {
 
   .gallery-column {
     width: 100%;
+
     & .p-input-icon-left {
       margin: 0.5rem 0;
     }
   }
+
   .gallery-content {
     height: 33vh;
     overflow: auto;
+
     .p-inputgroup {
       margin-bottom: 0.5rem;
     }
+
     .p-inputgroup-addon {
       background: var(--green-500);
       color: #fff;
       cursor: pointer;
     }
+
     .p-inputgroup-addon:active {
       background: var(--green-700);
     }
@@ -1601,17 +1315,20 @@ main {
 
 .edit-colors-dialog {
   position: relative;
+
   h3 {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
+
   .p-dialog-header {
     h3 {
       width: 300px;
     }
   }
-  .p-button:not(.p-button:last-child) {
+
+  .add-color {
     position: absolute;
     width: 3rem;
     top: 2.3rem;
@@ -1619,9 +1336,36 @@ main {
   }
 }
 
+.add-shade-button {
+  width: 2rem;
+  padding: 0.5rem;
+  background: #38bdf8;
+  color: #000;
+  text-align: center;
+  border-radius: 6px;
+}
+
+.delete-shade-button {
+  width: 2rem;
+  padding: 0.5rem;
+  background: #dc2626;
+  color: #fff;
+  text-align: center;
+  border-radius: 6px;
+}
+
+
+.edit-color-buttons {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 2rem;
+  justify-content: flex-end;
+}
+
 .edit-colors-dialog .p-dialog-content {
   height: fit-content;
 }
+
 .edit-colors-list {
   list-style: none;
   margin: 0;
@@ -1629,59 +1373,39 @@ main {
   display: flex;
   flex-flow: row wrap;
   gap: 2rem;
+
   div {
     margin-bottom: 0.5rem;
     color: silver;
   }
 }
 
-.color-picker-wrapper {
-  display: flex;
-  height: 30px;
-}
-.color-picker-container {
+.color-shades{
   display: flex;
   gap: 0.5rem;
   align-items: center;
+  margin: 1rem 0;
 }
 
-.edit-color-input {
-  width: 150px !important;
-}
-.p-colorpicker {
-  padding: 0;
-  margin: 0;
-  .p-inputtext {
-    width: 30px;
-    height: 30px;
-  }
-}
-.edit-color-name {
-  display: flex;
-  .p-button {
-    width: 40px;
-  }
-}
-.edit-color-label {
-  display: inline-block;
-  width: 130px;
-  font-weight: bold;
-  color: #fff;
-  text-align: right;
-  margin-right: 0.5rem;
-}
-.color-picker-button {
-  width: 30px;
-  padding: 0;
-  height: 30px;
-  margin: 0;
-}
 .form-row {
   display: flex;
   gap: 1rem;
   margin-top: 2rem;
+
   .price-display {
     width: 100%;
+  }
+
+  .price-label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .delete-price-button,
+  .add-price-button {
+    width: 12%;
+    height: 30px;
   }
 }
 
@@ -1694,6 +1418,7 @@ main {
 
 .form-toggles {
   justify-content: space-between;
+
   .p-button {
     width: 20%;
   }
@@ -1722,15 +1447,18 @@ main {
 
 .main-image {
   flex-flow: column;
+
   h2 {
     margin: 0;
   }
+
   .form-column {
     display: flex;
     align-items: center;
     gap: 1rem;
   }
 }
+
 .preview-image {
   background: var(--green-600);
   padding: 0.25rem;
@@ -1756,6 +1484,7 @@ main {
   display: flex;
   flex-flow: row nowrap;
   gap: 0.5rem;
+
   .p-button {
     width: 2.5rem;
   }
@@ -1786,25 +1515,31 @@ main {
   text-align: center;
   display: flex;
   justify-content: center;
+
   .download-table {
     width: 100%;
   }
+
   .update-table {
     width: 49%;
   }
+
   .upload-table {
     width: 49%;
   }
+
   .p-dialog-content {
     display: flex;
     flex-flow: row wrap;
   }
+
   .form-row {
     display: flex;
     gap: 1rem;
     margin-top: 2rem;
     height: fit-content;
   }
+
   .p-dropdown {
     width: 100%;
   }
@@ -1813,6 +1548,7 @@ main {
 .table-edit-dialog {
   width: fit-content;
   height: 15rem;
+
   .form-row {
     display: flex;
     gap: 1rem;
@@ -1824,8 +1560,10 @@ main {
 .table-example {
   display: flex;
   flex-flow: column;
+
   table {
     margin-bottom: 1rem;
+
     td {
       text-align: center;
       border: 1px solid var(--surface-300);
@@ -1833,19 +1571,23 @@ main {
     }
   }
 }
+
 /* Updated media query to reflect the changes made to .left-info */
 @media screen and (max-width: 1366px) {
   .p-dialog {
     .p-inputtext {
       font-size: 0.8rem;
     }
+
     h2 {
       font-size: 1.3rem;
       margin: 0.5rem 0;
     }
+
     .p-inputtextarea {
       height: 30vh;
     }
+
     .gallery-column {
       .p-button {
         width: 12vw;
@@ -1853,33 +1595,41 @@ main {
         padding: 0.4rem;
       }
     }
+
     .gallery-content {
       height: 34vh;
     }
   }
+
   .left-info {
     flex: 5;
     width: 100%;
+
     .form-row {
       margin: 1.8rem 0;
     }
   }
+
   .right-info {
     flex: 5;
   }
+
   .new-table-dialog {
     width: 90vw;
     height: 90vh;
+
     .p-dialog-content {
       display: flex;
       flex-flow: column;
     }
+
     .form-row {
       display: flex;
       gap: 1rem;
       margin-top: 2rem;
       height: fit-content;
     }
+
     .p-dropdown {
       width: 100%;
     }
@@ -1888,6 +1638,7 @@ main {
 
 .scrape-dialog {
   height: 50vh;
+
   .p-dialog-content {
     display: grid;
     grid-template-columns: 1fr 1fr;
