@@ -336,14 +336,25 @@
             <h2>Galerie</h2>
           </div>
           <div class="gallery-content">
+            <h2>Adaugare Imagine</h2>
             <InputGroup>
               <InputGroupAddon addonType="prepend" @click="addGalleryImage()">
                 <i class="pi pi-plus"></i>
               </InputGroupAddon>
               <InputText type="text" v-model="newGalleryImage" />
             </InputGroup>
-            <span class="gallery-row" v-for="image in currentBike.gallery" :key="image">
-              <InputText type="text" :value="image.replace('$http', 'http').replace(/\'/g, '')" readonly />
+            <div class="gallery-buttons">
+              <Button class="download-images-button" icon="pi pi-download" severity="success" @click="downloadImages()"
+                label="Descarca galerie" />
+              <label class="p-button p-component">
+                <i class="pi pi-upload"></i>
+                <span class="p-button-label">Incarca galerie</span>
+                <input type="file" id="fileInput" style="opacity: 0;position: absolute;" @change="uploadImages($event)"
+                  multiple />
+              </label>
+            </div>
+            <span class="gallery-row" v-for="(image, index) in currentBike.gallery" :key="index">
+              <InputText type="text" v-model="currentBike.gallery[index]" />
               <Image class="preview-image" preview>
                 <template #indicatoricon>
                   <i class="pi pi-eye"></i>
@@ -352,7 +363,7 @@
                   <i class="pi pi-eye"></i>
                 </template>
                 <template #preview>
-                  <img :src="image.replace('$http', 'http').replace(/\'/g, '')" alt="preview" />
+                  <img :src="currentBike.gallery[index].replace('$http', 'http').replace(/\'/g, '')" alt="preview" />
                 </template>
               </Image>
               <i class="pi pi-times remove-gallery-image" @click="confirmDelete($event, image)"></i>
@@ -396,19 +407,21 @@
                 Pentru a putea avea informatii diferite pentru fiecare culoare (eg: Royal Enfield are pret diferit in
                 functie de culoare) se poate duplica randul ce contine vehiculul respectiv in xls-ul descarcat.<br />
                 In acest rand duplicat se pot modifica informatiile dupa plac. <br /><br />
-                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul pentru vehiculele fara culoare, dar identice in afara de culoare pentru cele care au</b>
+                <b>IMPORTANT: Valoarile din coloanele ID si bike_name trebuie sa fie diferite pentru fiecare vehicul
+                  pentru vehiculele fara culoare, dar identice in afara de culoare pentru cele care au</b>
                 <br>
-                <ul>
-                  Pentru cele care au culoare si vrem sa putem alege culoare de pe site:  
-                  <li>
-                    Eg: <u><i>sidecar-urban-520-cream</i></u> si <u><i>sidecar-urban-520-silver</i></u> trebuie sa fie numele
-                  </li>
-                  <br>
-                  Restul care nu au culoare
-                  <li>sm-500-R, sm-500-T, sm-125, sm-120 etc.</li>
-                </ul>
-                <br />
-                Pentru ID se poate modifica doar ultima cifra.
+              <ul>
+                Pentru cele care au culoare si vrem sa putem alege culoare de pe site:
+                <li>
+                  Eg: <u><i>sidecar-urban-520-cream</i></u> si <u><i>sidecar-urban-520-silver</i></u> trebuie sa fie
+                  numele
+                </li>
+                <br>
+                Restul care nu au culoare
+                <li>sm-500-R, sm-500-T, sm-125, sm-120 etc.</li>
+              </ul>
+              <br />
+              Pentru ID se poate modifica doar ultima cifra.
               </p>
               <p>
                 Pentru un nume al culorii compus din mai multe culori (yellow-black) nu se foloseste niciodata cratiama
@@ -424,14 +437,15 @@
         <ul class="edit-colors-list">
 
           <li v-for="(color, mainIndex) in currentColors" :key="mainIndex">
-            <InputText v-model="color.name" placeholder="Nume Culoare"/>
+            <InputText v-model="color.name" placeholder="Nume Culoare" />
 
             <div class="color-shades">
               <span v-for="(shade, index) in color.shades" :key="index">
                 <input type="color" class="edit-color-input" v-model="color.shades[index]" />
               </span>
               <i class="pi pi-plus add-shade-button" @click="addShade(mainIndex)" />
-              <i v-if="color.shades.length > 1" class="pi pi-minus delete-shade-button" @click="deleteShade(mainIndex)" />
+              <i v-if="color.shades.length > 1" class="pi pi-minus delete-shade-button"
+                @click="deleteShade(mainIndex)" />
             </div>
 
             <div class="edit-color-buttons">
@@ -527,6 +541,7 @@
         .replace('-atv', ' atv')}`" v-for="scraper of scrapeList" :key="scraper" @click="scrapeSpecific(scraper)">
       </Button>
       <Button icon="pi pi-download" label="Descarca toate" @click="scrapeInfo()"></Button>
+      <Button icon="pi pi-save" label="Backup Baza De Date" @click="backupDB()"></Button>
     </Dialog>
     <ConfirmPopup></ConfirmPopup>
     <Toast></Toast>
@@ -534,7 +549,7 @@
 </template>
 <script setup>
 import ProgressSpinner from "primevue/progressspinner";
-import { VueElement, computed, onMounted, ref, watch } from "vue";
+import { onMounted, ref, watch } from "vue";
 import { useAppStore } from "../store/app.store";
 import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
@@ -553,8 +568,9 @@ import Toast from "primevue/toast";
 import Image from "primevue/image";
 import Dropdown from "primevue/dropdown";
 import MultiSelect from "primevue/multiselect";
-import ColorPicker from "primevue/colorpicker";
 import { FilterMatchMode } from "primevue/api";
+import FileUpload from 'primevue/fileupload';
+
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -749,6 +765,15 @@ const scrapeInfo = async () => {
   await appStore.scrapeInfo();
 };
 
+const backupDB = async () => {
+  const result = await appStore.backupDB();
+  if (result.success) {
+    toast.add({ severity: 'success', summary: 'Success', detail: 'Backup realizat cu succes', life: 3000 });
+  } else {
+    toast.add({ severity: 'error', summary: 'Error', detail: result.message, life: 3000 });
+  }
+};
+
 const scrapeSpecific = async (scrapeId) => {
   showScrapeDialog.value = false;
   appStore.toggleScrapeLog(true);
@@ -758,7 +783,7 @@ const scrapeSpecific = async (scrapeId) => {
 const getBikeOmologare = (bike) => {
   if (bike.omologare !== null && bike.omologare !== "undefined") {
     const omologareString = bike.omologare.replace("{", "[").replace("}", "]").replace(/\'/g, '"');
-    if(omologareString !== "[]" && omologareString !== "[NULL]"){
+    if (omologareString !== "[]" && omologareString !== "[NULL]") {
       omologareValue.value = JSON.parse(omologareString);
     }
   }
@@ -938,6 +963,7 @@ const uploadXLS = async () => {
 };
 
 const saveChanges = async () => {
+  console.log(currentBike.value.gallery[0]);
   await appStore.updateBike(currentBike.value, currentBrand.value);
   toast.add({
     severity: "success",
@@ -994,8 +1020,8 @@ const editBike = (bike) => {
     currentBike.value.capacitate =
       Math.round(parseInt(currentBike.value.capacitate) / 25) * 25;
   }
-  
-  if((bike.colors_display !== undefined || bike.colors_display !== null) && typeof bike.colors_display === 'string'){
+
+  if ((bike.colors_display !== undefined || bike.colors_display !== null) && typeof bike.colors_display === 'string') {
     let colorsDisplay = JSON.parse(bike.colors_display.replace(/\'/g, '"'))
 
 
@@ -1074,14 +1100,14 @@ const deleteShade = (index) => {
 }
 
 function transformArrayToObject(arr) {
-    return arr.reduce((acc, obj) => {
-        acc[obj.name] = obj.shades;
-        return acc;
-    }, {});
+  return arr.reduce((acc, obj) => {
+    acc[obj.name] = obj.shades;
+    return acc;
+  }, {});
 }
 
 function transformObjectToArray(obj) {
-    return Object.entries(obj).map(([name, shades]) => ({ name, shades }));
+  return Object.entries(obj).map(([name, shades]) => ({ name, shades }));
 }
 
 const saveColors = () => {
@@ -1131,6 +1157,52 @@ const confirmDelete = (event, image) => {
       removeImage(image);
     },
   });
+};
+
+const downloadImages = () => {
+  if (currentBike.value) {
+    const gallery = currentBike.value.gallery;
+    let galleryString = ""
+    if (gallery) {
+      gallery.forEach((image) => {
+        galleryString += `${image}\n`;
+      })
+    }
+    saveAs(
+      new Blob([galleryString], {
+        type: "text/plain;charset=utf-8",
+      }),
+      `${currentBike.value.bike_name}.txt`
+    );
+  }
+}
+
+const uploadImages = (event) => {
+  let file = event.target.files[0];
+  let reader = new FileReader();
+  reader.readAsText(file);
+  reader.onload = () => {
+    const galleryArray = []
+    const readerArray = reader.result.split('\n')
+    readerArray.forEach((image) => {
+      if (image) {
+        galleryArray.push(image)
+      }
+    })
+    currentBike.value.gallery = galleryArray;
+  };
+};
+
+const saveAs = (blob, filename) => {
+  if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+    window.navigator.msSaveOrOpenBlob(blob, filename);
+  } else {
+    const link = document.createElement("a");
+    link.href = window.URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    window.URL.revokeObjectURL(link.href);
+  }
 };
 
 const addGalleryImage = () => {
@@ -1307,6 +1379,17 @@ main {
     }
   }
 
+  .gallery-buttons {
+    display: flex;
+    flex-flow: row wrap;
+    gap: 0.5rem;
+    margin: 10px 0;
+
+    .p-button {
+      width: 20%;
+    }
+  }
+
   .gallery-row {
     width: 100%;
     display: flex;
@@ -1394,7 +1477,7 @@ main {
   }
 }
 
-.color-shades{
+.color-shades {
   display: flex;
   gap: 0.5rem;
   align-items: center;

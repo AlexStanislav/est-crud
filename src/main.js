@@ -97,16 +97,19 @@ app.on('activate', () => {
   }
 });
 
+let connectionInfo = {}
+
 const { Pool } = require('pg');
 let dynamicPool;
 function createDynamicPool(user, password, host, database) {
+  connectionInfo = { user, password, host, database, port: 5432, ssl: { rejectUnauthorized: false } }
   return new Pool({
     user: user,
     password: password,
     host: host,
     database: database,
     port: 5432,
-    // ssl: { rejectUnauthorized: false }
+    ssl: { rejectUnauthorized: false }
   });
 }
 
@@ -386,6 +389,104 @@ ipcMain.handle('delete-bike', async (event, data) => {
     connection.release();
   }
 });
+
+
+ipcMain.handle('backup-db', async () => {
+  const allTablesQuery = `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`;
+  const connection = await dynamicPool.connect();
+  const allTables = await connection.query(allTablesQuery);
+  const promises = allTables.rows.map((table) => {
+    return new Promise((resolve, reject) => {
+      const query = `SELECT * FROM ${table.table_name}`;
+      connection.query(query, (err, result) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve({ table: table.table_name, data: result.rows });
+        }
+      });
+    });
+  });
+
+  const data = await Promise.all(promises);
+
+  try {
+    data.forEach((table) => {
+      const bikes = table.data
+      const dataTable = []
+      bikes.forEach(bike => {
+        dataTable.push([
+          bike.id,
+          bike.bike_name,
+          bike.bike_slogan,
+          bike.bike_description,
+          bike.main_year,
+          bike.price,
+          bike.old_price,
+          bike.currency,
+          bike.image,
+          bike.gallery,
+          bike.category,
+          bike.rabla,
+          bike.permis,
+          bike.capacitate,
+          bike.is_gallery,
+          bike.gallery_image,
+          bike.gallery_title,
+          bike.gallery_description,
+          bike.is_popular,
+          bike.brand,
+          bike.vehicle_type,
+          bike.omologare,
+          bike.colors,
+          bike.display_model,
+          bike.colors_display
+        ])
+      })
+  
+      const sheetOptions = {
+        '!cols': [
+          { wch: 50 },
+          { wch: 50 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 20 },
+          { wch: 40 },
+        ]
+      }
+  
+      const buffer = xlsx.build([{ name: table.table, data: dataTable }], { sheetOptions });
+      fs.writeFileSync(`./backup/${table.table}.xlsx`, buffer);
+    })
+
+    return {
+      success: true
+    }
+  } catch (error) {
+    console.log(error);
+  } finally {
+    connection.release();
+  }
+})
 
 ipcMain.handle('download-xls', async (event, data) => {
   const connection = await dynamicPool.connect();
@@ -3204,8 +3305,7 @@ const dbQuery = async (bikesInfo, type, tableName, connection) => {
                 old_price = COALESCE(EXCLUDED.old_price, public.${tableName}_${tableType}.old_price),
                 image = COALESCE(EXCLUDED.image, public.${tableName}_${tableType}.image), 
                 gallery = COALESCE(EXCLUDED.gallery, public.${tableName}_${tableType}.gallery),
-                omologare = COALESCE(EXCLUDED.omologare, public.${tableName}_${tableType}.omologare),
-                colors = COALESCE(EXCLUDED.colors, public.${tableName}_${tableType}.colors);`
+                omologare = COALESCE(EXCLUDED.omologare, public.${tableName}_${tableType}.omologare);`
 
       try {
         await connection.query(infoQuery)

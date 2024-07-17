@@ -89,6 +89,10 @@ export const useAppStore = defineStore('app', {
             const response = await window.electronAPI.deleteBike({ id, tableName })
             return response
         },
+        async backupDB() {
+            const response = await window.electronAPI.backupDB()
+            return response
+        },
         async updateTable(tableName) {
             const response = await window.electronAPI.updateTable(tableName)
             return response
