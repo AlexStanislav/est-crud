@@ -89,6 +89,7 @@ typings/
 # Vite
 .vite/
 
+test.js
 # Electron-Forge
 out/
 

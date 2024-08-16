@@ -443,7 +443,7 @@ ipcMain.handle('backup-db', async () => {
           bike.colors_display
         ])
       })
-  
+
       const sheetOptions = {
         '!cols': [
           { wch: 50 },
@@ -473,7 +473,7 @@ ipcMain.handle('backup-db', async () => {
           { wch: 40 },
         ]
       }
-  
+
       const buffer = xlsx.build([{ name: table.table, data: dataTable }], { sheetOptions });
       fs.writeFileSync(`./backup/${table.table}.xlsx`, buffer);
     })
@@ -1639,9 +1639,14 @@ const getInfoKymco = async function (url, tableName) {
       let oldPrice = null;
 
       $('span').each((index, element) => {
-        if ($(element).text().includes("€")) {
-          bikePrice = $(element).text().trim().replace("€", "").split(".")[0].replace(",", "").trim()
+        const priceElement = $(element).find('strong')
+
+        if (priceElement.length !== 0) {
+          bikePrice = priceElement.text().trim().replace("€", "").split(".")[0].replace(",", "").trim()
         }
+        // if ($(element).text().includes("€")) {
+        //   bikePrice = $(element).text().trim().replace("€", "").split(".")[0].replace(",", "").trim()
+        // }
       })
 
       $('span').each((index, element) => {
@@ -1750,7 +1755,11 @@ const getInfoPiaggio = async function (url, tableName) {
       return finalSlogan.join(" ")
     }
     const bikeSlogan = await getSlogan()
-    const bikeDesc = $('.editorial-icon__text').find('p').text().trim()
+    let bikeDesc = $('.editorial-icon__text').find('p').text().trim()
+
+    if (bikeDesc === "") {
+      bikeDesc = $('.editorial__content').find('p').text().trim()
+    }
     const price = $('.product-price__list').text().trim().split(" ")[1]
 
     const getImage = async () => {
@@ -1772,23 +1781,85 @@ const getInfoPiaggio = async function (url, tableName) {
 
     const category = link.split("/")[3]
 
-    const bikeObj = {
-      bikeName,
-      bikeSlogan,
-      bikeDesc,
-      mainYear,
-      priceInfo: {
-        price,
-        oldPrice: null,
-        currency: "EUR"
-      },
-      image: imageData,
-      gallery: [],
-      category: category,
-      info: []
+    const colorsElement = $('.product-presentation_colors__swatches').find('li')
+
+    let colorsArray = []
+    colorsElement.each((index, element) => {
+      const icon = $(element).find('i');
+
+      if (icon.attr('style') !== undefined) {
+        const color = icon.find('span').text().replace("-", " ").trim()
+        const colorValue = icon.attr('style').split(";")[0].split(":")[1].trim()
+
+        colorsArray.push({ color, colorValue })
+      }
+    })
+
+    const rgbToHex = (rgb) => {
+      const [r, g, b] = rgb.match(/\w+/g).slice(1)
+      return `#${[r, g, b].map(x => {
+        const hex = Number(x).toString(16)
+        return hex.length === 1 ? `0${hex}` : hex
+      }).join('')}`
     }
 
-    bikesInfo[tableName][bikeName] = bikeObj
+    colorsArray = colorsArray.map(color => {
+      color.colorValue = rgbToHex(color.colorValue)
+      return color
+    })
+
+    const colorsObject = colorsArray.reduce((acc, curr) => {
+      acc[curr.color] = curr.colorValue
+      return acc
+    }, {})
+
+
+    const galleryElement = $('.gallery__container').find('li')
+
+    let galleryArray = []
+    if (galleryElement !== undefined) {
+      galleryElement.each((index, element) => {
+        const src = $(element).find('img').attr('src')
+        if (src !== undefined) {
+          galleryArray.push(src)
+        }
+      })
+    }
+
+    const colorsArrayWithIsDisplayed = colorsArray.map((color, index) => {
+      return {
+        ...color,
+        is_displayed: index === 0
+      }
+    })
+
+    const colorNamesArray = colorsArray.map(color => color.color)
+
+    for (const { color, colorValue, is_displayed } of colorsArrayWithIsDisplayed) {
+      const bikeObj = {
+        bikeName: `${bikeName}-${color}`,
+        bikeSlogan,
+        bikeDesc,
+        mainYear,
+        priceInfo: {
+          price,
+          oldPrice: null,
+          currency: "EUR"
+        },
+        image: imageData,
+        gallery: galleryArray,
+        category: category,
+        info: [],
+        colors: colorNamesArray,
+        colors_display: {
+          ...colorsObject,
+          [color]: colorValue
+        },
+        is_displayed
+      }
+
+      bikesInfo[tableName][`${bikeName}-${color}`] = bikeObj
+    }
 
     mainWindow.webContents.send('bike-scraped', bikeName)
     console.log(`${bikeName} scraped`);
@@ -2287,7 +2358,20 @@ const getInfoSwm = async function (url, tableName) {
 
     const $ = cheerio.load(await page.content())
 
-    const category = $('h3.vc_custom_heading').text().trim()
+    let category = $('h3.vc_custom_heading').text().trim()
+
+    if (category.toLowerCase() === 'off road') {
+      category = 'Enduro'
+    }
+
+    if (category.toLowerCase() === 'on road') {
+      category = 'Travel'
+    }
+
+    if (category.toLowerCase() === 'e-bike') {
+      category = 'E-RIDE'
+    }
+
     const bikeName = link.split("/")[4]
 
     const getBikeDesc = async function () {
@@ -2528,50 +2612,102 @@ const getInfoVespa = async function (url, tableName) {
       const $ = cheerio.load(await page.content())
 
       const html = link.split("/")[4]
-      const bikeName = $('.product-presentation__title').text().trim()
+      const bikeName = $('.title').text().trim() !== '' ? $('.title').text().trim() : $('.product-presentation__title').text().trim()
       const mainYear = html.split("-")[html.split("-").length - 1]
-      const bikeDesc = $('.product-presentation__abstract').text().trim()
+      const bikeDesc = $('.editorial__text').text().trim()
       const price = $('.product-price__list').text().trim().split(" ")[1]
 
-      const getImage = async () => {
-        const image = $('.image')
+      // const getImage = async () => {
+      //   const image = $('.product-image')
 
-        const imageSrc = image.map((index, element) => {
-          const src = $(element).attr('src')
-          if (src !== undefined && src.includes("vehicles")) {
-            return src
-          }
-        }).get()
+      //   const imageSrc = image.map((index, element) => {
+      //     const src = $(element).attr('src')
+      //     if (src !== undefined && src.includes("vehicles")) {
+      //       return src
+      //     }
+      //   }).get()
 
-        const imageData = await Promise.all(imageSrc)
+      //   const imageData = await Promise.all(imageSrc)
 
-        return imageData[0]
-      }
+      //   return imageData[0]
+      // }
 
-      const imageData = await getImage()
+      // const imageData = await getImage()
+
+      const imageData = $('.product-image').attr('src') !== undefined ? $('.product-image').attr('src') : $('.hooper-slide').find('img').attr('src')
 
       const category = link.split("/")[3]
 
-      const bikeObj = {
-        bikeName,
-        bikeSlogan: null,
-        bikeDesc,
-        mainYear,
-        priceInfo: {
-          price,
-          oldPrice: null,
-          currency: "EUR"
-        },
-        image: imageData,
-        gallery: [],
-        category: category,
-        info: []
+      const colorsElement = $('.product-presentation_colors__swatches').find('li')
+
+      let colorsArray = []
+      colorsElement.each((index, element) => {
+        const icon = $(element).find('i');
+
+        if (icon.attr('style') !== undefined) {
+          const color = icon.find('span').text().replace("-", " ").trim()
+          const colorValue = icon.attr('style').split(";")[0].split(":")[1].trim()
+
+          colorsArray.push({ color, colorValue })
+        }
+      })
+
+      const rgbToHex = (rgb) => {
+        const [r, g, b] = rgb.match(/\w+/g).slice(1)
+        return `#${[r, g, b].map(x => {
+          const hex = Number(x).toString(16)
+          return hex.length === 1 ? `0${hex}` : hex
+        }).join('')}`
       }
 
-      bikesInfo[tableName][bikeName] = bikeObj
+      colorsArray = colorsArray.map(color => {
+        color.colorValue = rgbToHex(color.colorValue)
+        return color
+      })
 
-      mainWindow.webContents.send('bike-scraped', bikeName)
-      console.log(`${bikeName} scraped`)
+      const colorsObject = colorsArray.reduce((acc, curr) => {
+        acc[curr.color] = curr.colorValue
+        return acc
+      }, {})
+
+      const colorsArrayWithIsDisplayed = colorsArray.map((color, index) => {
+        return {
+          ...color,
+          is_displayed: index === 0
+        }
+      })
+
+      const colorNamesArray = colorsArray.map(color => color.color)
+
+      for (const { color, colorValue, is_displayed } of colorsArrayWithIsDisplayed) {
+        const bikeObj = {
+          bikeName: `${bikeName}-${color}`,
+          bikeSlogan: null,
+          bikeDesc,
+          mainYear,
+          priceInfo: {
+            price,
+            oldPrice: null,
+            currency: "EUR"
+          },
+          image: imageData,
+          gallery: [],
+          category: category,
+          info: [],
+          colors: colorNamesArray,
+          colors_display: {
+            ...colorsObject,
+            [color]: colorValue
+          },
+          is_displayed
+        }
+
+        bikesInfo[tableName][`${bikeName}-${color}`] = bikeObj
+
+        mainWindow.webContents.send('bike-scraped', bikeName)
+        console.log(`${bikeName} scraped`)
+      }
+
     }
   }
   browser.close().then(() => console.log(`${tableName} scraped`))
@@ -2581,14 +2717,14 @@ const getInfoYamaha = async function (url, tableName) {
   const browser = await puppeteer.launch({ headless: "new" })
   const page = await browser.newPage()
 
-  await page.goto(url, { waitUntil: "networkidle0" })
+  await page.goto(url, { waitUntil: "networkidle0", timeout: 0 })
 
   const $ = cheerio.load(await page.content())
 
   bikesLinks[tableName] = []
   bikesInfo[tableName] = {}
 
-  $('a.fmYybM').each(async (index, element) => {
+  $('a.bdikOt').each(async (index, element) => {
     const link = $(element).attr('href');
     bikesLinks[tableName].push(link);
 
@@ -3127,6 +3263,11 @@ const yamahaBikes = [
     tableName: 'yamaha',
   },
   {
+    url: "https://www.yamaha-motor.eu/ro/ro/motorcycles/competition/?page=1&perPage=24",
+    type: 'motocicleta',
+    tableName: 'yamaha',
+  },
+  {
     url: 'https://www.yamaha-motor.eu/ro/ro/scooters/?page=1&perPage=24',
     type: 'scuter',
     tableName: 'yamaha',
@@ -3266,7 +3407,7 @@ const dbQuery = async (bikesInfo, type, tableName, connection) => {
       infoQuery.values.push(bike.bikeSlogan)
       infoQuery.values.push(bike.bikeDesc)
       infoQuery.values.push(bike.mainYear)
-      if (bike.priceInfo.price === undefined) {
+      if (bike.priceInfo.price !== undefined && Array.isArray(bike.priceInfo.price)) {
         infoQuery.values.push(bike.priceInfo.price[0])
       } else {
         infoQuery.values.push(bike.priceInfo.price)
@@ -3296,10 +3437,19 @@ const dbQuery = async (bikesInfo, type, tableName, connection) => {
       } else {
         infoQuery.values.push(null)
       }
-      infoQuery.values.push(true)
+      if (bike.is_displayed !== undefined) {
+        infoQuery.values.push(bike.is_displayed)
+      } else {
+        infoQuery.values.push(true)
+      }
+      if (bike.colors_display !== undefined) {
+        infoQuery.values.push(bike.colors_display)
+      } else {
+        infoQuery.values.push(null)
+      }
 
       infoQuery.text = `INSERT INTO public.${tableName}_${tableType}
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
             ON CONFLICT (bike_name) DO UPDATE 
             SET price = COALESCE(EXCLUDED.price, public.${tableName}_${tableType}.price), 
                 old_price = COALESCE(EXCLUDED.old_price, public.${tableName}_${tableType}.old_price),
