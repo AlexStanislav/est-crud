@@ -648,7 +648,9 @@ const scrapeList = [
   "scrape-aprilia-bikes",
   "scrape-motoboom-bikes",
   "scrape-motoboom-atv",
+  "scrape-motoboom-ssv",
   "scrape-aspgroup",
+  "scrape-aspgroup-ssv",
   "scrape-atvrom",
   "scrape-beneli",
   "scrape-beta",
@@ -656,13 +658,16 @@ const scrapeList = [
   "scrape-motoguzzi",
   "scrape-piaggio",
   "scrape-polaris",
+  "scrape-polaris-ssv",
   "scrape-polaris-snowmobiles",
   "scrape-segway",
+  "scrape-segway-ssv",
   "scrape-suzuki",
   "scrape-swm",
   "scrape-sym",
   "scrape-vespa",
   "scrape-yamaha",
+  "scrape-yamaha-ssv",
 ];
 
 const bikeCategories = ref({

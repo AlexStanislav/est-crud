@@ -109,7 +109,7 @@ function createDynamicPool(user, password, host, database) {
     host: host,
     database: database,
     port: 5432,
-    ssl: { rejectUnauthorized: false }
+    // ssl: { rejectUnauthorized: false }
   });
 }
 
@@ -2992,7 +2992,10 @@ const motoBoomAtv = [
     type: 'atv',
     tableName: 'canam',
     categoryUrl: null
-  },
+  }
+]
+
+const motoBoomSSV = [
   {
     url: 'https://www.motoboom.ro/can-am-ssv?limit=100',
     type: 'ssv',
@@ -3008,11 +3011,6 @@ const aspgroupBikes = [
     tableName: 'aspgroup',
   },
   {
-    url: 'https://www.aspgroup.ro/linhai',
-    type: 'atv',
-    tableName: 'aspgroup',
-  },
-  {
     url: 'https://www.aspgroup.ro/argo',
     type: 'atv',
     tableName: 'aspgroup',
@@ -3021,6 +3019,14 @@ const aspgroupBikes = [
     url: 'https://aspgroup.ro/royal-enfield',
     type: 'bikes',
     tableName: 'royal_enfield',
+  }
+]
+
+const aspgroupSSV = [
+  {
+    url: 'https://www.aspgroup.ro/linhai',
+    type: 'atv',
+    tableName: 'aspgroup',
   }
 ]
 
@@ -3164,7 +3170,10 @@ const polarisBikes = [
     url: 'https://polarisofficial.ro/atv',
     type: 'atv',
     tableName: 'polaris',
-  },
+  }
+]
+
+const polarisSSV = [
   {
     url: 'https://polarisofficial.ro/rzr',
     type: 'ssv',
@@ -3195,7 +3204,10 @@ const segwayBikes = [
     url: 'https://segwaypowersports.ro/atv',
     type: 'atv',
     tableName: 'segway',
-  },
+  }
+]
+
+const segwaySSV = [
   {
     url: 'https://segwaypowersports.ro/utv',
     type: 'ssv',
@@ -3287,6 +3299,9 @@ const yamahaBikes = [
     type: 'snowmobile',
     tableName: 'yamaha',
   },
+]
+
+const yamahaSSV = [
   {
     url: 'https://www.motoboom.ro/utv-side-by-side-yamaha?limit=100',
     type: 'ssv',
@@ -3499,20 +3514,25 @@ const scraper = async (connection) => {
   try {
     await processMotoBoomBike(motoBoomBikes, getInfoMotoboom, connection)
     await processMotoBoomBike(motoBoomAtv, getInfoMotoboom, connection)
+    await processMotoBoomBike(motoBoomSSV, getInfoMotoboom, connection)
     await processBike(aspgroupBikes, getInfoAspGroup, connection)
+    await processBike(aspgroupSSV, getInfoAspGroup, connection)
     await processBike(atvromBikes, getInfoAtvRom, connection)
     await processBike(beneliBikes, getInfoBeneli, connection)
     await processBike(betaBikes, getInfoBeta, connection)
     await processBike(kymcoBikes, getInfoKymco, connection)
     await processBike(piaggioBikes, getInfoPiaggio, connection)
     await processBike(polarisBikes, getInfoPolaris, connection)
+    await processBike(polarisSSV, getInfoPolaris, connection)
     await processBike(polarisSnowmobiles, getInfoPolaris, connection)
     await processBike(segwayBikes, getInfoSegway, connection)
+    await processBike(segwaySSV, getInfoSegway, connection)
     await processSuzuki(suzukiBikes, getInfoSuzuki, connection)
     await processBike(swmBikes, getInfoSwm, connection)
     await processBike(symBikes, getInfoSym, connection)
     await processBike(vespaBikes, getInfoVespa, connection)
     await processBike(yamahaBikes, getInfoYamaha, connection)
+    await processBike(yamahaSSV, getInfoYamaha, connection)
     await processBike(motoguzziBikes, getInfoMotoguzzi, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
@@ -3563,10 +3583,36 @@ ipcMain.handle('scrape-motoboom-atv', async (event) => {
   }
 })
 
+ipcMain.handle('scrape-motoboom-ssv', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processMotoBoomBike(motoBoomSSV, getInfoMotoboom, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
 ipcMain.handle('scrape-aspgroup', async (event) => {
   const connection = await dynamicPool.connect()
   try {
     await processBike(aspgroupBikes, getInfoAspGroup, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
+ipcMain.handle('scrape-aspgroup-ssv', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processBike(aspgroupSSV, getInfoAspGroup, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
     console.log(error)
@@ -3667,6 +3713,19 @@ ipcMain.handle('scrape-polaris', async (event) => {
   }
 })
 
+ipcMain.handle('scrape-polaris-ssv', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processBike(polarisSSV, getInfoPolaris, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
 ipcMain.handle('scrape-polaris-snowmobiles', async (event) => {
   const connection = await dynamicPool.connect()
   try {
@@ -3684,6 +3743,19 @@ ipcMain.handle('scrape-segway', async (event) => {
   const connection = await dynamicPool.connect()
   try {
     await processBike(segwayBikes, getInfoSegway, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
+ipcMain.handle('scrape-segway-ssv', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processBike(segwaySSV, getInfoSegway, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
     console.log(error)
@@ -3749,6 +3821,19 @@ ipcMain.handle('scrape-yamaha', async (event) => {
   const connection = await dynamicPool.connect()
   try {
     await processBike(yamahaBikes, getInfoYamaha, connection)
+  } catch (error) {
+    mainWindow.webContents.send('error', error)
+    console.log(error)
+  } finally {
+    mainWindow.webContents.send('data-scraped')
+    connection.release()
+  }
+})
+
+ipcMain.handle('scrape-yamaha-ssv', async (event) => {
+  const connection = await dynamicPool.connect()
+  try {
+    await processBike(yamahaSSV, getInfoYamaha, connection)
   } catch (error) {
     mainWindow.webContents.send('error', error)
     console.log(error)
